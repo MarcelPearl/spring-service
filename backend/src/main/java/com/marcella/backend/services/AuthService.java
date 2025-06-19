@@ -24,9 +24,6 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
 
-    private final Map<String, String> otpStorage = new HashMap<>();
-    private final Map<String, String> resetTokens = new HashMap<>();
-
     @Transactional
     public AuthResponse signup(SignupRequest request) {
         userRepository.findByEmail(request.getEmail()).ifPresent(u -> {
@@ -62,41 +59,11 @@ public class AuthService {
                 .build();
     }
 
-    public void forgotPassword(ForgotPasswordRequest request) {
-        String email = request.getEmail();
-        Users user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        String otp = String.valueOf((int) (Math.random() * 900000 + 100000));
-        otpStorage.put(email, otp);
-
-        emailService.sendEmail(email, "Your OTP Code", "Use this OTP to reset your password: " + otp);
-    }
-
-    public boolean otpValidate(OtpRequest request) {
-        String storedOtp = otpStorage.get(request.getEmail());
-        if (storedOtp != null && storedOtp.equals(request.getOtp())) {
-            String token = UUID.randomUUID().toString();
-            System.out.println("Generated reset token: " + token);
-            resetTokens.put(request.getEmail(), token);
-            return true;
-        }
-        return false;
-    }
-
-    public void resetPassword(ResetPasswordRequest request) {
-        String email = resetTokens.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(request.getToken()))
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
-
-        Users user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
-        resetTokens.remove(email);
+    public Boolean otpValidate(OtpRequest request) {
+        var email = request.getEmail();
+        var message= request.getOtp();
+        var subject = "OTP Verification";
+        return emailService.sendEmail(email,subject,message);
     }
 
     public AuthResponse authenticateWithGoogle(String googleAccessToken) {
@@ -118,6 +85,14 @@ public class AuthService {
         return AuthResponse.builder()
                 .token(token)
                 .build();
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail();
+        Users user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     private GoogleUserDto fetchGoogleUserInfo(String accessToken) {

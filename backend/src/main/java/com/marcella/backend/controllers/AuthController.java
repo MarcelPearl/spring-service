@@ -16,13 +16,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public AuthResponse signup(@RequestBody SignupRequest request) {
-        return authService.signup(request);
+    public ResponseEntity<AuthResponse> signup(@RequestBody SignupRequest request) {
+        return ResponseEntity.ok(authService.signup(request));
     }
 
     @PostMapping("/signin")
-    public AuthResponse signin(@RequestBody SigninRequest request) {
-        return authService.signin(request);
+    public ResponseEntity<AuthResponse> signin(@RequestBody SigninRequest request) {
+        return ResponseEntity.ok(authService.signin(request));
     }
 
     @PostMapping("/google")
@@ -31,14 +31,11 @@ public class AuthController {
     }
 
     @PostMapping("/otpVerification")
-    public ResponseEntity<Boolean> otpVerification(@RequestBody OtpRequest request) {
-        return ResponseEntity.ok(authService.otpValidate(request));
-    }
+    public ResponseEntity<Boolean> otpVerification(
+            @RequestBody OtpRequest request
+    ){
 
-    @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        authService.forgotPassword(request);
-        return ResponseEntity.ok("Password reset link has been sent to your email.");
+        return ResponseEntity.ok(authService.otpValidate(request));
     }
 
     @PostMapping("/reset-password")
