@@ -1,37 +1,17 @@
 version: '3.8'
 
 services:
-#  backend:
-#    build: .
-#    env_file:
-#      - .env
-#    ports:
-#      - "8080:8080"
-#    networks:
-#      - kafka-net
-#    environment:
-#      - SPRING_DATASOURCE_URL=jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:5432/postgres
-#      - SPRING_DATASOURCE_USERNAME=postgres.ufwkdfwrrqurdgybwvse
-#      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-#      - JWT_SECRET=${JWT_SECRET}
-#      - JWT_EXPIRATION=${JWT_EXPIRATION}
-#      - APP_PASSWORD=${APP_PASSWORD}
-#      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092  # Use internal listener
-#    depends_on:
-#      - kafka
 
   kafka:
     image: bitnami/kafka:latest
     container_name: kafka
     ports:
-      - "9092:9092"    # External access
-      - "29092:29092"  # Internal access
+      - "9092:9092"
+      - "29092:29092"
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-
-      # Multiple listeners for internal and external access
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:29092,EXTERNAL://:9092,CONTROLLER://:9093
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
