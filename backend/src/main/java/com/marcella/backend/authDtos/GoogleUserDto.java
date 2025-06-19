@@ -1,4 +1,4 @@
-package com.marcella.backend.auth;
+package com.marcella.backend.authDtos;
 
 import lombok.*;
 

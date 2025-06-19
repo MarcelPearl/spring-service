@@ -4,8 +4,8 @@ CREATE TABLE users (
                        password_hash VARCHAR(255) NOT NULL,
                        name VARCHAR(100),
                        is_active BOOLEAN DEFAULT TRUE,
-                       created_at TIMESTAMPTZ DEFAULT NOW(),
-                       updated_at TIMESTAMPTZ DEFAULT NOW()
+                       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE workflows (

@@ -1,4 +1,4 @@
-package com.marcella.backend.auth;
+package com.marcella.backend.authDtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,10 +7,8 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
-public class SigninRequest {
-    private String email;
-    private String password;
+@AllArgsConstructor
+public class GoogleAuthRequest {
+    private String token;
 }
-
