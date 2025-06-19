@@ -1,4 +1,4 @@
-package com.marcella.backend.auth;
+package com.marcella.backend.authDtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,10 +7,9 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
-public class SignupRequest {
+@AllArgsConstructor
+public class OtpRequest {
     private String email;
-    private String password;
-    private String name;
+    private String otp;
 }

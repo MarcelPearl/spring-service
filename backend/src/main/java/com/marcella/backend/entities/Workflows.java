@@ -1,8 +1,10 @@
 package com.marcella.backend.entities;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
@@ -25,6 +27,7 @@ public class Workflows {
 
     private String description;
 
+    @Type(JsonBinaryType.class)
     @Column(name = "workflow_data", columnDefinition = "jsonb", nullable = false)
     private String workflowData;
 

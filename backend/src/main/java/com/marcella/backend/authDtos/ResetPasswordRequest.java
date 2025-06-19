@@ -1,4 +1,4 @@
-package com.marcella.backend.auth;
+package com.marcella.backend.authDtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ForgotPasswordRequest {
-    private String email;
+public class ResetPasswordRequest {
+    private String token;
+    private String newPassword;
 }

@@ -1,6 +1,6 @@
 package com.marcella.backend.controllers;
 
-import com.marcella.backend.auth.*;
+import com.marcella.backend.authDtos.*;
 import com.marcella.backend.services.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

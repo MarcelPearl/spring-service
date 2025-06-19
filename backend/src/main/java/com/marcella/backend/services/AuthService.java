@@ -1,7 +1,7 @@
 package com.marcella.backend.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.marcella.backend.auth.*;
+import com.marcella.backend.authDtos.*;
 import com.marcella.backend.entities.Users;
 import com.marcella.backend.repositories.UserRepository;
 import jakarta.transaction.Transactional;
