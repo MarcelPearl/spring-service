@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:5432/postgres
     username: postgres.ufwkdfwrrqurdgybwvse
-    password: ${DB_PASSWORD}
+    password: MarcelPearl0627
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -12,6 +12,8 @@ spring:
 
   config:
     import: "optional:env[.env],optional:env[.env.user]"
+
+
 
   jpa:
     hibernate:
@@ -28,10 +30,10 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: marcellapearl0627@gmail.com
-    password: ${APP_PASSWORD}
+    password: qapsgyyokufnfhxz
 
   kafka:
-    bootstrap-servers: kafka:9092
+    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -44,5 +46,9 @@ spring:
         spring.json.trusted.packages: '*'
 
 jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400}
+  secret: my-super-secret-jwt-key-1234567890
+  expiration: 604800000
+
+debug: true
+server:
+  port: 2706
