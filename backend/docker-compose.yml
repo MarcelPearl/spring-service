@@ -16,19 +16,25 @@ services:
 #      - JWT_SECRET=${JWT_SECRET}
 #      - JWT_EXPIRATION=${JWT_EXPIRATION}
 #      - APP_PASSWORD=${APP_PASSWORD}
-#      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+#      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092  # Use internal listener
+#    depends_on:
+#      - kafka
 
   kafka:
     image: bitnami/kafka:latest
     container_name: kafka
     ports:
-      - "9092:9092"
+      - "9092:9092"    # External access
+      - "29092:29092"  # Internal access
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+      # Multiple listeners for internal and external access
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
       - ALLOW_PLAINTEXT_LISTENER=yes
@@ -42,7 +48,7 @@ services:
       - "1660:8080"
     environment:
       - KAFKA_CLUSTERS_0_NAME=kraft-cluster
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
     depends_on:
       - kafka
     networks:
@@ -65,5 +71,3 @@ networks:
 
 volumes:
   redis_data:
-
-
