@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -21,17 +22,18 @@ public class WebhookTriggerController {
     public ResponseEntity<String> webhookTrigger(
             @PathVariable UUID workflowId,
             @PathVariable String nodeId,
-            @RequestBody Map<String, Object> input) {
+            @RequestBody(required = false) Map<String, Object> input) {
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("nodeId", nodeId);
+        metadata.put("input", input);
 
         WorkflowEvent event = new WorkflowEvent(
                 workflowId,
                 null,
                 "WEBHOOK_TRIGGERED",
                 Instant.now(),
-                Map.of(
-                        "nodeId", nodeId,
-                        "input", input
-                )
+                metadata
         );
 
         eventProducer.publishWorkflowEvent(event);
