@@ -12,17 +12,30 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/triggers")
+@RequestMapping(value = "/api/v1/triggers",produces = "application/json")
 public class WebhookTriggerController {
 
     private final WorkflowEventProducer eventProducer;
 
-    @PostMapping("/{workflowId}")
-    public ResponseEntity<String> triggerWorkflow(@PathVariable UUID workflowId, @RequestBody Map<String, Object> input) {
-        WorkflowEvent event = new WorkflowEvent(workflowId, null, "RUN", Instant.now(),input);
+    @PostMapping("/{workflowId}/{nodeId}")
+    public ResponseEntity<String> webhookTrigger(
+            @PathVariable UUID workflowId,
+            @PathVariable String nodeId,
+            @RequestBody Map<String, Object> input) {
+
+        WorkflowEvent event = new WorkflowEvent(
+                workflowId,
+                null,
+                "WEBHOOK_TRIGGERED",
+                Instant.now(),
+                Map.of(
+                        "nodeId", nodeId,
+                        "input", input
+                )
+        );
 
         eventProducer.publishWorkflowEvent(event);
-        return ResponseEntity.ok("Triggered");
+        return ResponseEntity.ok("Webhook received and workflow resumed.");
     }
 }
 
