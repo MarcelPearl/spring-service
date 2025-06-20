@@ -98,6 +98,4 @@ public class WorkflowController {
 
         return ResponseEntity.ok(stats);
     }
-
-
 }
