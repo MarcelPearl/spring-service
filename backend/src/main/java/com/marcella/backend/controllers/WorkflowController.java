@@ -1,9 +1,14 @@
 package com.marcella.backend.controllers;
 
 import com.marcella.backend.entities.Users;
+import com.marcella.backend.repositories.ExecutionRepository;
+import com.marcella.backend.repositories.WorkflowRepository;
 import com.marcella.backend.responses.PageResponse;
+import com.marcella.backend.services.ExecutionService;
 import com.marcella.backend.services.WorkflowExecutorService;
 import com.marcella.backend.services.WorkflowService;
+import com.marcella.backend.sidebar.SidebarStatsResponse;
+import com.marcella.backend.sidebar.SidebarStatsService;
 import com.marcella.backend.workflowDtos.CreateWorkflowRequest;
 import com.marcella.backend.workflowDtos.WorkflowDto;
 import jakarta.validation.Valid;
@@ -21,6 +26,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -30,6 +37,8 @@ import java.util.UUID;
 public class WorkflowController {
     private final WorkflowService workflowService;
     private final WorkflowExecutorService workflowExecutorService;
+    private final ExecutionRepository executionRepository;
+    private final WorkflowRepository workflowRepository;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PageResponse<WorkflowDto>> getWorkflows(
@@ -74,4 +83,21 @@ public class WorkflowController {
         workflowExecutorService.executeWorkflow(workflowId);
         return ResponseEntity.ok("Workflow executed");
     }
+
+    @GetMapping("/sidebar-stats")
+    public ResponseEntity<Map<String, Object>> getSidebarStats(Authentication authentication) {
+        UUID userId = getUserIdFromAuth(authentication);
+        System.out.println("Sidebar stats requested for user: " + userId);
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("activeWorkflows", workflowRepository.countByOwnerIdAndStatusIgnoreCase(userId, "ACTIVE"));
+        stats.put("draftWorkflows", workflowRepository.countByOwnerIdAndStatusIgnoreCase(userId, "DRAFT"));
+        stats.put("recentRuns", executionRepository.findTop5ByOwnerIdOrderByStartedAtDesc(userId).size());
+        stats.put("failedExecutions", executionRepository.countByOwnerIdAndStatusIgnoreCase(userId, "FAILED"));
+        stats.put("scheduled", 0);
+
+        return ResponseEntity.ok(stats);
+    }
+
+
 }
