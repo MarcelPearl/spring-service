@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 
 @Slf4j
 @Component
@@ -18,8 +20,18 @@ public class WorkflowEventConsumer {
     public void consumeWorkflowEvent(WorkflowEvent event) {
         log.info("Received workflow event: {}", event);
 
-        if ("CREATED".equals(event.getEventType()) || "RUN".equals(event.getEventType())) {
-            executorService.executeWorkflow(event.getWorkflowId());
+        switch (event.getEventType()) {
+            case "RUN" -> executorService.executeWorkflow(event.getWorkflowId());
+
+            case "WEBHOOK_TRIGGERED" -> {
+                Map<String, Object> payload = event.getPayload();
+                String nodeId = (String) payload.get("nodeId");
+                Map<String, Object> input = (Map<String, Object>) payload.get("input");
+
+                executorService.executeFromNode(event.getWorkflowId(), nodeId, input);
+            }
+
+            default -> log.warn("Unhandled event type: {}", event.getEventType());
         }
     }
 }

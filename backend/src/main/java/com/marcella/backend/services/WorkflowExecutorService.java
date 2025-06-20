@@ -92,6 +92,30 @@ public class WorkflowExecutorService {
                 }, () -> log.warn("No handler for node type {}", type));
     }
 
+    public void executeFromNode(UUID workflowId, String nodeId, Map<String, Object> input) {
+        Workflows workflow = workflowRepository.findById(workflowId)
+                .orElseThrow(() -> new RuntimeException("Workflow not found"));
+
+        Map<String, Object> workflowData = parseWorkflowData(workflow);
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) workflowData.get("nodes");
+        List<Map<String, Object>> edges = (List<Map<String, Object>>) workflowData.get("edges");
+
+        Map<String, Map<String, Object>> nodeMap = nodes.stream()
+                .collect(java.util.stream.Collectors.toMap(n -> n.get("id").toString(), n -> n));
+
+        Map<String, Object> startNode = nodeMap.get(nodeId);
+        if (startNode == null) {
+            throw new RuntimeException("Node not found: " + nodeId);
+        }
+
+        log.info("Resuming execution from node: {}", nodeId);
+
+        Map<String, Object> data = (Map<String, Object>) startNode.getOrDefault("data", new HashMap<>());
+        data.put("context", input != null ? input : new HashMap<>());
+        startNode.put("data", data);
+
+        executeNodeRecursively(startNode, nodeMap, edges, input);
+    }
 
     private Map<String, Object> parseWorkflowData(Workflows workflow) {
         try {
