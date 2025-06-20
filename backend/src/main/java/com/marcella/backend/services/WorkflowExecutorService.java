@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -101,7 +102,7 @@ public class WorkflowExecutorService {
         List<Map<String, Object>> edges = (List<Map<String, Object>>) workflowData.get("edges");
 
         Map<String, Map<String, Object>> nodeMap = nodes.stream()
-                .collect(java.util.stream.Collectors.toMap(n -> n.get("id").toString(), n -> n));
+                .collect(Collectors.toMap(n -> n.get("id").toString(), n -> n));
 
         Map<String, Object> startNode = nodeMap.get(nodeId);
         if (startNode == null) {
@@ -111,7 +112,11 @@ public class WorkflowExecutorService {
         log.info("Resuming execution from node: {}", nodeId);
 
         Map<String, Object> data = (Map<String, Object>) startNode.getOrDefault("data", new HashMap<>());
-        data.put("context", input != null ? input : new HashMap<>());
+        if (input == null) {
+            input = (Map<String, Object>) data.getOrDefault("context", new HashMap<>());
+        }
+
+        data.put("context", input);
         startNode.put("data", data);
 
         executeNodeRecursively(startNode, nodeMap, edges, input);
