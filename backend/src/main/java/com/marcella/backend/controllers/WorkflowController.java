@@ -2,6 +2,7 @@ package com.marcella.backend.controllers;
 
 import com.marcella.backend.entities.Users;
 import com.marcella.backend.responses.PageResponse;
+import com.marcella.backend.services.WorkflowExecutorService;
 import com.marcella.backend.services.WorkflowService;
 import com.marcella.backend.workflowDtos.CreateWorkflowRequest;
 import com.marcella.backend.workflowDtos.WorkflowDto;
@@ -28,6 +29,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WorkflowController {
     private final WorkflowService workflowService;
+    private final WorkflowExecutorService workflowExecutorService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PageResponse<WorkflowDto>> getWorkflows(
@@ -65,5 +67,11 @@ public class WorkflowController {
         }
 
         throw new RuntimeException("Invalid authentication principal: " + principal);
+    }
+
+    @PostMapping("/{workflowId}/run")
+    public ResponseEntity<String> runWorkflowDirectly(@PathVariable UUID workflowId) {
+        workflowExecutorService.executeWorkflow(workflowId);
+        return ResponseEntity.ok("Workflow executed");
     }
 }

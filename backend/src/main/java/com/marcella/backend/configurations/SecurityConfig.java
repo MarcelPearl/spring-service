@@ -24,7 +24,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
-                                "/api/v1/user/**"
+                                "/api/v1/user/**",
+                                "/api/v1/triggers/**"
                         ).permitAll()
                         .anyRequest().authenticated() // everything else is protected
                 )

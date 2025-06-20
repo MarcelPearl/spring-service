@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -18,5 +20,5 @@ public class CreateWorkflowRequest {
     private String description;
 
     @NotNull
-    private String workflowData;
+    private Map<String, Object> workflowData;
 }

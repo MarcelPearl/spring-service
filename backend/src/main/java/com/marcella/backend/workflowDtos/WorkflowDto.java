@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -17,7 +18,7 @@ public class WorkflowDto {
     private String name;
     private String description;
     private String status;
-    private String workflowData;
+    private Map<String, Object> workflowData;
     private boolean isActive;
     private Instant createdAt;
     private Instant updatedAt;
