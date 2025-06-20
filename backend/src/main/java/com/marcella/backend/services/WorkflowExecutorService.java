@@ -1,6 +1,7 @@
 package com.marcella.backend.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marcella.backend.entities.Execution;
 import com.marcella.backend.entities.Workflows;
 import com.marcella.backend.nodeHandlers.NodeHandler;
 import com.marcella.backend.repositories.WorkflowRepository;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WorkflowExecutorService {
     private final WorkflowRepository workflowRepository;
+    private final ExecutionService executionService;
     private final ObjectMapper objectMapper;
     private final List<NodeHandler> nodeHandlers;
 
@@ -26,25 +28,36 @@ public class WorkflowExecutorService {
         Workflows workflow = workflowRepository.findById(workflowId)
                 .orElseThrow(() -> new RuntimeException("Workflow not found"));
 
-        Map<String, Object> workflowData = parseWorkflowData(workflow);
-        List<Map<String, Object>> nodes = (List<Map<String, Object>>) workflowData.get("nodes");
-        List<Map<String, Object>> edges = (List<Map<String, Object>>) workflowData.get("edges");
+        Execution execution = executionService.startExecution(workflow);
 
-        Map<String, Map<String, Object>> nodeMap = nodes.stream()
-                .collect(java.util.stream.Collectors.toMap(n -> n.get("id").toString(), n -> n));
+        try {
+            Map<String, Object> workflowData = parseWorkflowData(workflow);
+            List<Map<String, Object>> nodes = (List<Map<String, Object>>) workflowData.get("nodes");
+            List<Map<String, Object>> edges = (List<Map<String, Object>>) workflowData.get("edges");
 
-        for (Map<String, Object> node : nodes) {
-            String nodeId = node.get("id").toString();
-            boolean hasIncoming = edges.stream().anyMatch(e -> nodeId.equals(e.get("target")));
-            if (!hasIncoming) {
-                log.info("Starting execution at trigger/root node: {}", nodeId);
-                executeNodeRecursively(node, nodeMap, edges, null);
-                break;
+            Map<String, Map<String, Object>> nodeMap = nodes.stream()
+                    .collect(Collectors.toMap(n -> n.get("id").toString(), n -> n));
+
+            for (Map<String, Object> node : nodes) {
+                String nodeId = node.get("id").toString();
+                boolean hasIncoming = edges.stream().anyMatch(e -> nodeId.equals(e.get("target")));
+                if (!hasIncoming) {
+                    log.info("Starting execution at root node: {}", nodeId);
+                    Map<String, Object> finalResult = executeNodeRecursively(node, nodeMap, edges, null);
+
+                    executionService.completeExecution(execution, finalResult);
+                    return;
+                }
             }
+
+            executionService.failExecution(execution, "No root/trigger node found.");
+        } catch (Exception e) {
+            log.error("Workflow execution failed", e);
+            executionService.failExecution(execution, e.getMessage());
         }
     }
 
-    private void executeNodeRecursively(
+    private Map<String, Object> executeNodeRecursively(
             Map<String, Object> currentNode,
             Map<String, Map<String, Object>> nodeMap,
             List<Map<String, Object>> edges,
@@ -52,10 +65,10 @@ public class WorkflowExecutorService {
     ) {
         String type = (String) currentNode.get("type");
 
-        nodeHandlers.stream()
+        return nodeHandlers.stream()
                 .filter(h -> h.canHandle(type))
                 .findFirst()
-                .ifPresentOrElse(handler -> {
+                .map(handler -> {
                     Map<String, Object> result = handler.executeWithResult(currentNode, inputContext);
 
                     Map<String, Object> mergedContext = new HashMap<>();
@@ -90,8 +103,15 @@ public class WorkflowExecutorService {
                             executeNodeRecursively(nextNode, nodeMap, edges, mergedContext);
                         }
                     }
-                }, () -> log.warn("No handler for node type {}", type));
+
+                    return result;
+                })
+                .orElseGet(() -> {
+                    log.warn("No handler for node type {}", type);
+                    return new HashMap<>();
+                });
     }
+
 
     public void executeFromNode(UUID workflowId, String nodeId, Map<String, Object> input) {
         Workflows workflow = workflowRepository.findById(workflowId)

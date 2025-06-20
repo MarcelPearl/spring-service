@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ContactController {
     private final EmailService emailService;
-    private final UserRepository userRepository;
 
     @PostMapping
     public ResponseEntity<String> sendContactMessage(

@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface WorkflowRepository extends JpaRepository<Workflows, UUID> {
-    Page<Workflows> findAllByOwnerId(UUID userId, Pageable pageable);
-
-    Page<Workflows> findAllByOwnerIdAndNameContainingIgnoreCase(UUID userId, String name, Pageable pageable);
 
     Page<Workflows> findByOwnerIdAndIsActiveTrue(UUID ownerId, Pageable pageable);
+
+    long countByOwnerIdAndStatusIgnoreCase(UUID ownerId, String status);
+
 }

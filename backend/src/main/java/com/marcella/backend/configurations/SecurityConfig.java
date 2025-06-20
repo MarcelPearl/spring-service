@@ -24,11 +24,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
+                                "api/v1/workflows/**",
                                 "/api/v1/user/**",
                                 "/api/v1/triggers/**",
                                 "/api/contact"
                         ).permitAll()
-                        .anyRequest().authenticated() // everything else is protected
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
