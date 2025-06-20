@@ -25,7 +25,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/user/**",
-                                "/api/v1/triggers/**"
+                                "/api/v1/triggers/**",
+                                "/api/contact"
                         ).permitAll()
                         .anyRequest().authenticated() // everything else is protected
                 )
