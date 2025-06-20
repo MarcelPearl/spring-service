@@ -1,23 +1,20 @@
 package com.marcella.backend.events;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class WorkflowEvent {
     private UUID workflowId;
     private UUID userId;
     private String eventType;
     private Instant timestamp;
-
-    public WorkflowEvent(UUID workflowId, UUID userId, String eventType) {
-        this.workflowId = workflowId;
-        this.userId = userId;
-        this.eventType = eventType;
-        this.timestamp = Instant.now();
-    }
-
-    public WorkflowEvent() {}
+    private Map<String, Object> payload;
 }

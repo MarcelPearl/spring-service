@@ -52,3 +52,7 @@ jwt:
 debug: true
 server:
   port: 2706
+
+app:
+  mail:
+    from: marcellapearl0627@gmail.com
