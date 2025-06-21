@@ -49,7 +49,6 @@ jwt:
   secret: my-super-secret-jwt-key-1234567890
   expiration: 604800000
 
-debug: true
 server:
   port: 2706
 
