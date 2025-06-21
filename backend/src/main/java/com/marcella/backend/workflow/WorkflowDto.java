@@ -1,4 +1,4 @@
-package com.marcella.backend.workflowDtos;
+package com.marcella.backend.workflow;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

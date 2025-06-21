@@ -14,6 +14,5 @@ public class SidebarStatsResponse {
     private long draftWorkflows;
     private long activeWorkflows;
     private long failedExecutions;
-    private List<Execution> recentRuns;
-    private List<Execution> scheduledExecutions;
+    private long recentRuns;
 }

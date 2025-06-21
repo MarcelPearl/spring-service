@@ -1,56 +1,90 @@
 package com.marcella.backend.nodeHandlers;
 
+import com.marcella.backend.services.WorkflowEventProducer;
+import com.marcella.backend.utils.TemplateUtils;
+import com.marcella.backend.workflow.NodeCompletionMessage;
+import com.marcella.backend.workflow.NodeExecutionMessage;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-@Component
+@Service
+@RequiredArgsConstructor
 @Slf4j
 public class TransformNodeHandler implements NodeHandler {
 
+    private final WorkflowEventProducer eventProducer;
+
     @Override
-    public boolean canHandle(String type) {
-        return "transform".equalsIgnoreCase(type);
+    public boolean canHandle(String nodeType) {
+        return "transform".equals(nodeType);
     }
 
     @Override
-    public Map<String, Object> executeWithResult(Map<String, Object> node, Map<String, Object> input) {
-        Map<String, Object> data = (Map<String, Object>) node.get("data");
-        Map<String, Object> mapping = (Map<String, Object>) data.get("mapping");
+    public Map<String, Object> execute(NodeExecutionMessage message) {
+        long startTime = System.currentTimeMillis();
+        log.info("Executing transform node: {}", message.getNodeId());
 
-        Map<String, Object> inputData = input != null ? (Map<String, Object>) input.get("output") : null;
+        try {
+            Map<String, Object> nodeData = message.getNodeData();
+            Map<String, Object> context = message.getContext();
+            Map<String, Object> output = new HashMap<>();
 
-        if (mapping == null || inputData == null) {
-            log.warn("Missing mapping or input in transform node: {}", node.get("id"));
-            return null;
-        }
+            Map<String, Object> mapping = (Map<String, Object>) nodeData.get("mapping");
+            if (mapping != null) {
+                for (Map.Entry<String, Object> entry : mapping.entrySet()) {
+                    String targetKey = entry.getKey();
+                    String sourceKey = TemplateUtils.substitute(String.valueOf(entry.getValue()), context);
 
-        Map<String, Object> transformed = new HashMap<>();
-
-        for (Map.Entry<String, Object> entry : mapping.entrySet()) {
-            String targetField = entry.getKey();
-            String sourcePath = entry.getValue().toString();
-
-            Object value = resolvePath(inputData, sourcePath);
-            transformed.put(targetField, value);
-        }
-
-        log.info("Transform node output for {}: {}", node.get("id"), transformed);
-        return Map.of("output", transformed);
-    }
-
-    private Object resolvePath(Map<String, Object> data, String path) {
-        String[] parts = path.split("\\.");
-        Object current = data;
-        for (String part : parts) {
-            if (current instanceof Map) {
-                current = ((Map<?, ?>) current).get(part);
-            } else {
-                return null;
+                    if (context != null && context.containsKey(sourceKey)) {
+                        Object value = context.get(sourceKey);
+                        output.put(targetKey, value);
+                        log.info("Mapped {} -> {}: {}", sourceKey, targetKey, value);
+                    } else {
+                        log.warn("Source key '{}' not found in context for mapping to '{}'", sourceKey, targetKey);
+                    }
+                }
             }
+
+            if (context != null) {
+                output.putAll(context);
+            }
+
+            output.put("transformed_at", Instant.now().toString());
+            output.put("node_type", "transform");
+            output.put("node_executed_at", Instant.now().toString());
+
+            long processingTime = System.currentTimeMillis() - startTime;
+            publishCompletionEvent(message, output, "COMPLETED", processingTime);
+            return output;
+
+        } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
+            log.error("Transform node failed: {}", message.getNodeId(), e);
+            publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED", processingTime);
+            throw e;
         }
-        return current;
+    }
+
+    private void publishCompletionEvent(NodeExecutionMessage message, Map<String, Object> output,
+                                        String status, long processingTime) {
+        NodeCompletionMessage completionMessage = NodeCompletionMessage.builder()
+                .executionId(message.getExecutionId())
+                .workflowId(message.getWorkflowId())
+                .nodeId(message.getNodeId())
+                .nodeType(message.getNodeType())
+                .status(status)
+                .output(output)
+                .timestamp(Instant.now())
+                .processingTime(processingTime)
+                .build();
+
+        eventProducer.publishNodeCompletion(completionMessage);
+        log.info("Published completion event for transform node: {} with status: {} in {}ms",
+                message.getNodeId(), status, processingTime);
     }
 }

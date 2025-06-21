@@ -1,4 +1,4 @@
-package com.marcella.backend.workflowDtos;
+package com.marcella.backend.workflow;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
