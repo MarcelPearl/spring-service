@@ -1,7 +1,7 @@
 package com.marcella.backend.kafka;
 
-import com.marcella.backend.events.WorkflowEvent;
-import com.marcella.backend.services.WorkflowExecutorService;
+import com.marcella.backend.events.WorkflowEventREM;
+import com.marcella.backend.services.WorkflowExecutorServiceREM;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -13,11 +13,11 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class WorkflowEventConsumer {
-    private final WorkflowExecutorService executorService;
+public class WorkflowEventConsumerREM {
+    private final WorkflowExecutorServiceREM executorService;
 
     @KafkaListener(topics = "workflow-events", groupId = "workflow-group")
-    public void consumeWorkflowEvent(WorkflowEvent event) {
+    public void consumeWorkflowEvent(WorkflowEventREM event) {
         log.info("Received workflow event: {}", event);
 
         switch (event.getEventType()) {

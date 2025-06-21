@@ -3,7 +3,7 @@ package com.marcella.backend.mappers;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marcella.backend.entities.Workflows;
-import com.marcella.backend.workflowDtos.WorkflowDto;
+import com.marcella.backend.workflow.WorkflowDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class WorkflowMapper {
+public class WorkflowMapperMOD {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public WorkflowDto toDto(Workflows entity) {
