@@ -11,6 +11,6 @@ public interface WorkflowRepository extends JpaRepository<Workflows, UUID> {
 
     Page<Workflows> findByOwnerIdAndIsActiveTrue(UUID ownerId, Pageable pageable);
 
-    long countByOwnerIdAndStatusIgnoreCase(UUID ownerId, String status);
+    long countByOwner_IdAndStatusIgnoreCase(UUID ownerId, String status);
 
 }

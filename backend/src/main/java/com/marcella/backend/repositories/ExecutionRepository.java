@@ -10,11 +10,9 @@ import java.util.UUID;
 
 public interface ExecutionRepository extends JpaRepository<Execution, UUID> {
 
-    List<Execution> findTop5ByOwnerIdOrderByStartedAtDesc(UUID ownerId);
+    long countByOwner_IdAndStatusIgnoreCase(UUID ownerId, String status);
 
-    List<Execution> findByOwnerIdAndStatusIgnoreCase(UUID ownerId, String status);
-
-    long countByOwnerIdAndStatusIgnoreCase(UUID ownerId, String status);
+    long countByOwner_Id(UUID ownerId);
 
     @Query("SELECT e FROM Execution e WHERE e.workflow.id = :workflowId AND e.status = :status ORDER BY e.startedAt DESC")
     List<Execution> findByWorkflowIdAndStatus(@Param("workflowId") UUID workflowId, @Param("status") String status);

@@ -3,8 +3,6 @@ package com.marcella.backend.sidebar;
 import com.marcella.backend.entities.Execution;
 import com.marcella.backend.repositories.ExecutionRepository;
 import com.marcella.backend.repositories.WorkflowRepository;
-import com.marcella.backend.sidebar.SidebarStatsResponse;
-import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,19 +17,17 @@ public class SidebarStatsService {
     private final ExecutionRepository executionRepository;
 
     public SidebarStatsResponse getStats(UUID userId) {
-        long draftWorkflows = workflowRepository.countByOwnerIdAndStatusIgnoreCase(userId, "DRAFT");
-        long activeWorkflows = workflowRepository.countByOwnerIdAndStatusIgnoreCase(userId, "ACTIVE");
-        long failedExecutions = executionRepository.countByOwnerIdAndStatusIgnoreCase(userId, "FAILED");
+        long draftWorkflows = workflowRepository.countByOwner_IdAndStatusIgnoreCase(userId, "DRAFT");
+        long activeWorkflows = workflowRepository.countByOwner_IdAndStatusIgnoreCase(userId, "ACTIVE");
+        long failedExecutions = executionRepository.countByOwner_IdAndStatusIgnoreCase(userId, "FAILED");
 
-        List<Execution> recentRuns = executionRepository.findTop5ByOwnerIdOrderByStartedAtDesc(userId);
-        List<Execution> scheduled = executionRepository.findByOwnerIdAndStatusIgnoreCase(userId, "SCHEDULED");
+        long recentRuns = executionRepository.countByOwner_Id(userId);
 
         return SidebarStatsResponse.builder()
                 .draftWorkflows(draftWorkflows)
                 .activeWorkflows(activeWorkflows)
                 .failedExecutions(failedExecutions)
                 .recentRuns(recentRuns)
-                .scheduledExecutions(scheduled)
                 .build();
     }
 }
