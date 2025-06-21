@@ -1,43 +1,61 @@
 package com.marcella.backend.nodeHandlers;
-
-import com.marcella.backend.events.WorkflowEventREM;
-import com.marcella.backend.kafka.WorkflowEventProducerMOD;
+import com.marcella.backend.services.DistributedWorkflowCoordinator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 @RestController
+@RequestMapping("/api/v1/triggers")
 @RequiredArgsConstructor
-@RequestMapping(value = "/api/v1/triggers",produces = "application/json")
+@Slf4j
 public class WebhookTriggerController {
 
-    private final WorkflowEventProducerMOD eventProducer;
+    private final DistributedWorkflowCoordinator coordinator;
+
+    @PostMapping("/{workflowId}")
+    public ResponseEntity<Map<String, Object>> triggerWorkflow(
+            @PathVariable UUID workflowId,
+            @RequestBody(required = false) Map<String, Object> payload) {
+
+        try {
+            UUID executionId = coordinator.startWorkflowExecution(workflowId, payload);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "triggered",
+                    "executionId", executionId,
+                    "workflowId", workflowId
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", e.getMessage(),
+                    "status", "failed"
+            ));
+        }
+    }
 
     @PostMapping("/{workflowId}/{nodeId}")
-    public ResponseEntity<String> webhookTrigger(
+    public ResponseEntity<Map<String, Object>> resumeAtNode(
             @PathVariable UUID workflowId,
             @PathVariable String nodeId,
-            @RequestBody(required = false) Map<String, Object> input) {
+            @RequestBody(required = false) Map<String, Object> payload) {
 
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("nodeId", nodeId);
-        metadata.put("input", input);
+        try {
+            coordinator.resumeWorkflowAtNode(workflowId, nodeId, payload);
 
-        WorkflowEventREM event = new WorkflowEventREM(
-                workflowId,
-                null,
-                "WEBHOOK_TRIGGERED",
-                Instant.now(),
-                metadata
-        );
-
-        eventProducer.publishWorkflowEvent(event);
-        return ResponseEntity.ok("Webhook received and workflow resumed.");
+            return ResponseEntity.ok(Map.of(
+                    "status", "resumed",
+                    "workflowId", workflowId,
+                    "nodeId", nodeId
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", e.getMessage(),
+                    "status", "failed"
+            ));
+        }
     }
 }
-

@@ -127,7 +127,10 @@
 			<artifactId>redisson-spring-boot-starter</artifactId>
 			<version>3.24.3</version>
 		</dependency>
-
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
