@@ -6,6 +6,8 @@ import com.marcella.backend.repositories.WorkflowRepository;
 import com.marcella.backend.responses.PageResponse;
 import com.marcella.backend.services.DistributedWorkflowCoordinator;
 import com.marcella.backend.services.WorkflowService;
+import com.marcella.backend.sidebar.SidebarStatsResponse;
+import com.marcella.backend.sidebar.SidebarStatsService;
 import com.marcella.backend.workflow.CreateWorkflowRequest;
 import com.marcella.backend.workflow.WorkflowDto;
 import jakarta.validation.Valid;
@@ -20,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,9 +37,7 @@ import java.util.UUID;
 public class WorkflowController {
 
     private final WorkflowService workflowService;
-    private final DistributedWorkflowCoordinator workflowCoordinator; // New coordinator
-    private final ExecutionRepository executionRepository;
-    private final WorkflowRepository workflowRepository;
+    private final DistributedWorkflowCoordinator workflowCoordinator;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PageResponse<WorkflowDto>> getWorkflows(
@@ -116,20 +117,6 @@ public class WorkflowController {
                     "status", "FAILED"
             ));
         }
-    }
-
-    @GetMapping("/sidebar-stats")
-    public ResponseEntity<Map<String, Object>> getSidebarStats(Authentication authentication) {
-        UUID userId = getUserIdFromAuth(authentication);
-
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("activeWorkflows", workflowRepository.countByOwnerIdAndStatusIgnoreCase(userId, "ACTIVE"));
-        stats.put("draftWorkflows", workflowRepository.countByOwnerIdAndStatusIgnoreCase(userId, "DRAFT"));
-        stats.put("recentRuns", executionRepository.findTop5ByOwnerIdOrderByStartedAtDesc(userId).size());
-        stats.put("failedExecutions", executionRepository.countByOwnerIdAndStatusIgnoreCase(userId, "FAILED"));
-        stats.put("scheduled", 0);
-
-        return ResponseEntity.ok(stats);
     }
 
     private UUID getUserIdFromAuth(Authentication authentication) {

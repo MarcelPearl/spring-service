@@ -1,5 +1,7 @@
 package com.marcella.backend.nodeHandlers;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marcella.backend.services.WorkflowEventProducer;
 import com.marcella.backend.workflow.NodeCompletionMessage;
 import com.marcella.backend.workflow.NodeExecutionMessage;
@@ -17,6 +19,7 @@ import java.util.Map;
 public class StartNodeHandler implements NodeHandler {
 
     private final WorkflowEventProducer eventProducer;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public boolean canHandle(String nodeType) {
@@ -32,9 +35,30 @@ public class StartNodeHandler implements NodeHandler {
             Map<String, Object> output = new HashMap<>();
 
             if (message.getNodeData() != null && message.getNodeData().containsKey("context")) {
-                Map<String, Object> nodeContext = (Map<String, Object>) message.getNodeData().get("context");
-                output.putAll(nodeContext);
-                log.info("Start node initialized workflow with {} variables", nodeContext.size());
+                Object contextObj = message.getNodeData().get("context");
+
+                if (contextObj instanceof String strContext) {
+                    if (!strContext.trim().isEmpty()) {
+                        try {
+                            Map<String, Object> parsed = objectMapper.readValue(strContext, new TypeReference<>() {});
+                            output.putAll(parsed);
+                            log.info("Parsed stringified context with {} keys", parsed.size());
+                        }
+                        catch (Exception parseEx) {
+                            log.warn("Failed to parse context string in nodeData: {}", strContext, parseEx);
+                        }
+                    }
+                    else {
+                        log.warn("Context string is empty or null, skipping parse");
+                    }
+                }
+                else if (contextObj instanceof Map<?, ?> mapContext) {
+                    output.putAll((Map<String, Object>) mapContext);
+                    log.info("Loaded context map with {} keys", mapContext.size());
+                }
+                else {
+                    log.warn("Unexpected context type: {}", contextObj.getClass().getName());
+                }
             }
 
             if (message.getContext() != null) {
