@@ -32,18 +32,36 @@ spring:
     username: marcellapearl0627@gmail.com
     password: qapsgyyokufnfhxz
 
+  data:
+    redis:
+      url: redis://localhost:6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+      client-type: lettuce
+
   kafka:
     bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
-      group-id: workflow-group
+      group-id: workflow-coordinator
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: '*'
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
 
 jwt:
   secret: my-super-secret-jwt-key-1234567890
@@ -56,3 +74,4 @@ server:
 app:
   mail:
     from: marcellapearl0627@gmail.com
+

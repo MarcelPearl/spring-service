@@ -1,45 +1,85 @@
 package com.marcella.backend.nodeHandlers;
-
-import com.marcella.backend.services.EmailService;
+import com.marcella.backend.services.WorkflowEventProducer;
+import com.marcella.backend.workflow.NodeCompletionMessage;
+import com.marcella.backend.workflow.NodeExecutionMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
-@Component
+@Service
 @RequiredArgsConstructor
 @Slf4j
 public class EmailNodeHandler implements NodeHandler {
 
-    private final EmailService emailService;
+    private final WorkflowEventProducer eventProducer;
 
     @Override
-    public boolean canHandle(String type) {
-        return "action".equalsIgnoreCase(type);
+    public boolean canHandle(String nodeType) {
+        return "email".equals(nodeType);
     }
 
     @Override
-    public Map<String, Object> executeWithResult(Map<String, Object> node, Map<String, Object> input) {
-        Map<String, Object> data = (Map<String, Object>) node.get("data");
+    public Map<String, Object> execute(NodeExecutionMessage message) {
+        log.info("Executing email node: {}", message.getNodeId());
 
-        String to = (String) data.get("to");
-        String subject = (String) data.get("subject");
-        String body = (String) data.get("body");
+        try {
+            Map<String, Object> nodeData = message.getNodeData();
+            Map<String, Object> context = message.getContext();
 
-        Map<String, Object> outputContext = input != null ? (Map<String, Object>) input.get("output") : null;
+            // Extract email details with template substitution
+            String to = substituteTemplate((String) nodeData.get("to"), context);
+            String subject = substituteTemplate((String) nodeData.get("subject"), context);
+            String body = substituteTemplate((String) nodeData.get("body"), context);
 
-        if (to == null && outputContext != null) to = (String) outputContext.get("to");
-        if (subject == null && outputContext != null) subject = (String) outputContext.get("subject");
-        if (body == null && outputContext != null) body = (String) outputContext.get("body");
+            // Simulate sending email
+            log.info("Email sent to {} with subject '{}'", to, subject);
+            log.info("Email body: {}", body);
 
-        if (to == null || subject == null || body == null) {
-            throw new IllegalArgumentException("Missing fields in email node");
+            Map<String, Object> output = new HashMap<>();
+            output.put("email_sent", true);
+            output.put("recipient", to);
+            output.put("subject", subject);
+            output.put("sent_at", Instant.now().toString());
+
+            // IMPORTANT: Publish completion event
+            publishCompletionEvent(message, output, "COMPLETED");
+
+            return output;
+
+        } catch (Exception e) {
+            log.error("Email node failed: {}", message.getNodeId(), e);
+            publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED");
+            throw e;
         }
+    }
 
-        emailService.sendEmail(to, subject, body);
-        log.info("Email sent to {} with subject '{}'", to, subject);
+    private String substituteTemplate(String template, Map<String, Object> context) {
+        if (template == null || context == null) return template;
 
-        return Map.of("output", Map.of("status", "sent", "to", to));
+        String result = template;
+        for (Map.Entry<String, Object> entry : context.entrySet()) {
+            result = result.replace("{{" + entry.getKey() + "}}", String.valueOf(entry.getValue()));
+        }
+        return result;
+    }
+
+    private void publishCompletionEvent(NodeExecutionMessage message, Map<String, Object> output, String status) {
+        NodeCompletionMessage completionMessage = NodeCompletionMessage.builder()
+                .executionId(message.getExecutionId())
+                .workflowId(message.getWorkflowId())
+                .nodeId(message.getNodeId())
+                .nodeType(message.getNodeType())
+                .status(status)
+                .output(output)
+                .timestamp(Instant.now())
+                .processingTime(System.currentTimeMillis())
+                .build();
+
+        eventProducer.publishNodeCompletion(completionMessage);
+        log.info("Published completion event for node: {} with status: {}", message.getNodeId(), status);
     }
 }

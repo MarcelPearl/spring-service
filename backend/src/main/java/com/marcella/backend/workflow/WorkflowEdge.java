@@ -23,7 +23,6 @@ public class WorkflowEdge {
     private String type;
     private Map<String, Object> data;
 
-
     public WorkflowEdge(String source, String target) {
         this.source = source;
         this.target = target;
