@@ -117,14 +117,14 @@ public class WorkflowMapper {
             return false;
         }
 
-        boolean hasStartNode = workflow.getNodes().stream()
-                .anyMatch(node -> "start".equalsIgnoreCase(node.getType()) ||
-                        "trigger".equalsIgnoreCase(node.getType()));
-
-        if (!hasStartNode) {
-            log.warn("Workflow has no start/trigger node: {}", workflow.getId());
-            return false;
-        }
+//        boolean hasStartNode = workflow.getNodes().stream()
+//                .anyMatch(node -> "start".equalsIgnoreCase(node.getType()) ||
+//                        "trigger".equalsIgnoreCase(node.getType()));
+//
+//        if (!hasStartNode) {
+//            log.warn("Workflow has no start/trigger node: {}", workflow.getId());
+//            return false;
+//        }
 
         Set<String> nodeIds = workflow.getNodes().stream()
                 .map(WorkflowNode::getId)

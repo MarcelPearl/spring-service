@@ -23,7 +23,7 @@ public class EmailNodeHandler implements NodeHandler {
 
     @Override
     public boolean canHandle(String nodeType) {
-        return "email".equals(nodeType);
+        return "action".equals(nodeType);
     }
 
     @Override

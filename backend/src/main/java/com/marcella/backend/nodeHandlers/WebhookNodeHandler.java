@@ -21,7 +21,7 @@ public class WebhookNodeHandler implements NodeHandler {
 
     @Override
     public boolean canHandle(String nodeType) {
-        return "webhook".equals(nodeType);
+        return "trigger".equals(nodeType);
     }
 
     @Override
