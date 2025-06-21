@@ -1,6 +1,7 @@
 package com.marcella.backend.nodeHandlers;
 
 import com.marcella.backend.services.WorkflowEventProducer;
+import com.marcella.backend.utils.TemplateUtils;
 import com.marcella.backend.workflow.NodeCompletionMessage;
 import com.marcella.backend.workflow.NodeExecutionMessage;
 import lombok.RequiredArgsConstructor;
@@ -34,33 +35,29 @@ public class FilterNodeHandler implements NodeHandler {
             Map<String, Object> nodeData = message.getNodeData();
             Map<String, Object> context = message.getContext();
 
-            // Extract condition configuration
             Map<String, Object> condition = (Map<String, Object>) nodeData.get("condition");
-
             if (condition == null) {
                 log.warn("No condition specified in filter node: {}, defaulting to true", message.getNodeId());
                 return executeWithDefaultResult(message, context, true, startTime);
             }
 
-            String field = (String) condition.get("field");
-            String operator = (String) condition.get("operator");
-            Object expectedValue = condition.get("value");
+            String field = TemplateUtils.substitute((String) condition.get("field"), context);
+            String operator = TemplateUtils.substitute((String) condition.get("operator"), context);
+            String expectedValueRaw = TemplateUtils.substitute(String.valueOf(condition.get("value")), context);
 
             if (field == null || operator == null) {
                 log.warn("Invalid condition configuration in node: {} - missing field or operator", message.getNodeId());
                 return executeWithDefaultResult(message, context, false, startTime);
             }
 
-            // Get actual value from context
             Object actualValue = context.get(field);
+            Object expectedValue = expectedValueRaw;
 
-            // Evaluate the condition
             boolean conditionResult = evaluateCondition(actualValue, operator, expectedValue);
 
             log.info("Filter evaluation for node {}: {} {} {} = {}",
                     message.getNodeId(), actualValue, operator, expectedValue, conditionResult);
 
-            // Build output based on condition result
             Map<String, Object> output = buildConditionOutput(context, conditionResult, actualValue, operator, expectedValue);
 
             long processingTime = System.currentTimeMillis() - startTime;
@@ -99,19 +96,15 @@ public class FilterNodeHandler implements NodeHandler {
                                                      String operator,
                                                      Object expectedValue) {
         Map<String, Object> output = new HashMap<>();
-
-        // Add all context variables
         if (context != null) {
             output.putAll(context);
         }
 
-        // Add condition evaluation results
         output.put("condition_result", conditionResult);
-        output.put("condition_passed", conditionResult); // Alternative key name
+        output.put("condition_passed", conditionResult);
         output.put("evaluated_at", Instant.now().toString());
         output.put("node_type", "filter");
 
-        // Add evaluation details for debugging/logging
         Map<String, Object> evaluationDetails = new HashMap<>();
         evaluationDetails.put("actual_value", actualValue);
         evaluationDetails.put("operator", operator);
@@ -119,14 +112,8 @@ public class FilterNodeHandler implements NodeHandler {
         evaluationDetails.put("result", conditionResult);
         output.put("evaluation_details", evaluationDetails);
 
-        // For backward compatibility, add the old format too
-        if (conditionResult) {
-            output.put("branch", "true");
-            output.put("condition_branch", "true");
-        } else {
-            output.put("branch", "false");
-            output.put("condition_branch", "false");
-        }
+        output.put("branch", String.valueOf(conditionResult));
+        output.put("condition_branch", String.valueOf(conditionResult));
 
         return output;
     }
@@ -138,7 +125,6 @@ public class FilterNodeHandler implements NodeHandler {
         }
 
         try {
-            // Try numeric comparison first
             double actualNum = Double.parseDouble(actual.toString());
             double expectedNum = Double.parseDouble(expected.toString());
 
@@ -154,9 +140,7 @@ public class FilterNodeHandler implements NodeHandler {
                     yield false;
                 }
             };
-
         } catch (NumberFormatException e) {
-            // Fall back to string comparison
             String actualStr = actual.toString();
             String expectedStr = expected.toString();
 

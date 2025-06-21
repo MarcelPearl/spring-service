@@ -25,31 +25,43 @@ public class DelayNodeHandler implements NodeHandler {
 
     @Override
     public Map<String, Object> execute(NodeExecutionMessage message) throws InterruptedException {
+        long startTime = System.currentTimeMillis();
         log.info("Executing delay node: {}", message.getNodeId());
 
         try {
             Map<String, Object> nodeData = message.getNodeData();
-            Integer duration = (Integer) nodeData.getOrDefault("duration", 1000);
+            Map<String, Object> context = message.getContext();
 
+            Integer duration = (Integer) nodeData.getOrDefault("duration", 1000);
             log.info("Delaying for {} milliseconds", duration);
+
             Thread.sleep(duration);
 
             Map<String, Object> output = new HashMap<>();
+            if (context != null) {
+                output.putAll(context);
+            }
+
             output.put("delay_completed", true);
             output.put("duration_ms", duration);
             output.put("completed_at", Instant.now().toString());
+            output.put("node_type", "delay");
+            output.put("node_executed_at", Instant.now().toString());
 
-            publishCompletionEvent(message, output, "COMPLETED");
+            long processingTime = System.currentTimeMillis() - startTime;
+            publishCompletionEvent(message, output, "COMPLETED", processingTime);
+
             return output;
 
         } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
             log.error("Delay node failed: {}", message.getNodeId(), e);
-            publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED");
+            publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED", processingTime);
             throw e;
         }
     }
 
-    private void publishCompletionEvent(NodeExecutionMessage message, Map<String, Object> output, String status) {
+    private void publishCompletionEvent(NodeExecutionMessage message, Map<String, Object> output, String status, long processingTime) {
         NodeCompletionMessage completionMessage = NodeCompletionMessage.builder()
                 .executionId(message.getExecutionId())
                 .workflowId(message.getWorkflowId())
@@ -58,10 +70,11 @@ public class DelayNodeHandler implements NodeHandler {
                 .status(status)
                 .output(output)
                 .timestamp(Instant.now())
-                .processingTime(System.currentTimeMillis())
+                .processingTime(processingTime)
                 .build();
 
         eventProducer.publishNodeCompletion(completionMessage);
-        log.info("Published completion event for node: {} with status: {}", message.getNodeId(), status);
+        log.info("Published completion event for delay node: {} with status: {} in {}ms",
+                message.getNodeId(), status, processingTime);
     }
 }

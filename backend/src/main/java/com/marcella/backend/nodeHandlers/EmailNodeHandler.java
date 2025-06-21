@@ -1,5 +1,8 @@
 package com.marcella.backend.nodeHandlers;
+
+import com.marcella.backend.services.EmailService;
 import com.marcella.backend.services.WorkflowEventProducer;
+import com.marcella.backend.utils.TemplateUtils;
 import com.marcella.backend.workflow.NodeCompletionMessage;
 import com.marcella.backend.workflow.NodeExecutionMessage;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,7 @@ import java.util.Map;
 public class EmailNodeHandler implements NodeHandler {
 
     private final WorkflowEventProducer eventProducer;
+    private final EmailService emailService;
 
     @Override
     public boolean canHandle(String nodeType) {
@@ -24,50 +28,62 @@ public class EmailNodeHandler implements NodeHandler {
 
     @Override
     public Map<String, Object> execute(NodeExecutionMessage message) {
+        long startTime = System.currentTimeMillis();
         log.info("Executing email node: {}", message.getNodeId());
 
         try {
             Map<String, Object> nodeData = message.getNodeData();
             Map<String, Object> context = message.getContext();
 
-            // Extract email details with template substitution
-            String to = substituteTemplate((String) nodeData.get("to"), context);
-            String subject = substituteTemplate((String) nodeData.get("subject"), context);
-            String body = substituteTemplate((String) nodeData.get("body"), context);
+            log.info("Email node context variables: {}", context.keySet());
 
-            // Simulate sending email
-            log.info("Email sent to {} with subject '{}'", to, subject);
-            log.info("Email body: {}", body);
+            String to = TemplateUtils.substitute((String) nodeData.get("to"), context);
+            String subject = TemplateUtils.substitute((String) nodeData.get("subject"), context);
+            String body = TemplateUtils.substitute((String) nodeData.get("body"), context);
+
+            log.info("Email details - To: {}, Subject: {}", to, subject);
+            log.info("Email body preview: {}", body.substring(0, Math.min(100, body.length())) + "...");
+
+            boolean emailSent = emailService.sendEmail(to, subject, body);
 
             Map<String, Object> output = new HashMap<>();
-            output.put("email_sent", true);
+
+            if (context != null) {
+                output.putAll(context);
+            }
+
+            output.put("email_sent", emailSent);
             output.put("recipient", to);
             output.put("subject", subject);
             output.put("sent_at", Instant.now().toString());
+            output.put("node_type", "email");
+            output.put("node_executed_at", Instant.now().toString());
 
-            // IMPORTANT: Publish completion event
-            publishCompletionEvent(message, output, "COMPLETED");
+            long processingTime = System.currentTimeMillis() - startTime;
+            publishCompletionEvent(message, output, "COMPLETED", processingTime);
 
+            log.info("Email sent successfully to {} with subject: {}", to, subject);
             return output;
 
         } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
             log.error("Email node failed: {}", message.getNodeId(), e);
-            publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED");
+
+            Map<String, Object> errorOutput = new HashMap<>();
+            if (message.getContext() != null) {
+                errorOutput.putAll(message.getContext());
+            }
+            errorOutput.put("error", e.getMessage());
+            errorOutput.put("email_sent", false);
+            errorOutput.put("failed_at", Instant.now().toString());
+
+            publishCompletionEvent(message, errorOutput, "FAILED", processingTime);
             throw e;
         }
     }
 
-    private String substituteTemplate(String template, Map<String, Object> context) {
-        if (template == null || context == null) return template;
-
-        String result = template;
-        for (Map.Entry<String, Object> entry : context.entrySet()) {
-            result = result.replace("{{" + entry.getKey() + "}}", String.valueOf(entry.getValue()));
-        }
-        return result;
-    }
-
-    private void publishCompletionEvent(NodeExecutionMessage message, Map<String, Object> output, String status) {
+    private void publishCompletionEvent(NodeExecutionMessage message, Map<String, Object> output,
+                                        String status, long processingTime) {
         NodeCompletionMessage completionMessage = NodeCompletionMessage.builder()
                 .executionId(message.getExecutionId())
                 .workflowId(message.getWorkflowId())
@@ -76,10 +92,11 @@ public class EmailNodeHandler implements NodeHandler {
                 .status(status)
                 .output(output)
                 .timestamp(Instant.now())
-                .processingTime(System.currentTimeMillis())
+                .processingTime(processingTime)
                 .build();
 
         eventProducer.publishNodeCompletion(completionMessage);
-        log.info("Published completion event for node: {} with status: {}", message.getNodeId(), status);
+        log.info("Published completion event for email node: {} with status: {} in {}ms",
+                message.getNodeId(), status, processingTime);
     }
 }
