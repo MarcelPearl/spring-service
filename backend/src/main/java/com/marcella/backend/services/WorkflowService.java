@@ -2,13 +2,13 @@ package com.marcella.backend.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marcella.backend.entities.Workflows;
-import com.marcella.backend.events.WorkflowEvent;
-import com.marcella.backend.kafka.WorkflowEventProducer;
-import com.marcella.backend.mappers.WorkflowMapper;
+import com.marcella.backend.events.WorkflowEventREM;
+import com.marcella.backend.kafka.WorkflowEventProducerMOD;
+import com.marcella.backend.mappers.WorkflowMapperMOD;
 import com.marcella.backend.repositories.UserRepository;
 import com.marcella.backend.repositories.WorkflowRepository;
-import com.marcella.backend.workflowDtos.CreateWorkflowRequest;
-import com.marcella.backend.workflowDtos.WorkflowDto;
+import com.marcella.backend.workflow.CreateWorkflowRequest;
+import com.marcella.backend.workflow.WorkflowDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,8 +21,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WorkflowService {
     private final WorkflowRepository workflowRepository;
-    private final WorkflowEventProducer eventProducer;
-    private final WorkflowMapper workflowMapper;
+    private final WorkflowEventProducerMOD eventProducer;
+    private final WorkflowMapperMOD workflowMapper;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -57,7 +57,7 @@ public class WorkflowService {
                 "createdAt", dto.getCreatedAt().toString()
         );
 
-        WorkflowEvent event = new WorkflowEvent(
+        WorkflowEventREM event = new WorkflowEventREM(
                 dto.getId(),
                 userId,
                 "CREATED",

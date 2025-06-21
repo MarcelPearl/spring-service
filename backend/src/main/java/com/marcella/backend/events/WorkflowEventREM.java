@@ -11,7 +11,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class WorkflowEvent {
+public class WorkflowEventREM {
     private UUID workflowId;
     private UUID userId;
     private String eventType;

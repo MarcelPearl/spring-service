@@ -4,13 +4,10 @@ import com.marcella.backend.entities.Users;
 import com.marcella.backend.repositories.ExecutionRepository;
 import com.marcella.backend.repositories.WorkflowRepository;
 import com.marcella.backend.responses.PageResponse;
-import com.marcella.backend.services.ExecutionService;
-import com.marcella.backend.services.WorkflowExecutorService;
+import com.marcella.backend.services.WorkflowExecutorServiceREM;
 import com.marcella.backend.services.WorkflowService;
-import com.marcella.backend.sidebar.SidebarStatsResponse;
-import com.marcella.backend.sidebar.SidebarStatsService;
-import com.marcella.backend.workflowDtos.CreateWorkflowRequest;
-import com.marcella.backend.workflowDtos.WorkflowDto;
+import com.marcella.backend.workflow.CreateWorkflowRequest;
+import com.marcella.backend.workflow.WorkflowDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -36,7 +33,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WorkflowController {
     private final WorkflowService workflowService;
-    private final WorkflowExecutorService workflowExecutorService;
+    private final WorkflowExecutorServiceREM workflowExecutorService;
     private final ExecutionRepository executionRepository;
     private final WorkflowRepository workflowRepository;
 

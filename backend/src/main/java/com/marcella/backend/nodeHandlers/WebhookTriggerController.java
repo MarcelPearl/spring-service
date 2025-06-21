@@ -1,7 +1,7 @@
 package com.marcella.backend.nodeHandlers;
 
-import com.marcella.backend.events.WorkflowEvent;
-import com.marcella.backend.kafka.WorkflowEventProducer;
+import com.marcella.backend.events.WorkflowEventREM;
+import com.marcella.backend.kafka.WorkflowEventProducerMOD;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +16,7 @@ import java.util.UUID;
 @RequestMapping(value = "/api/v1/triggers",produces = "application/json")
 public class WebhookTriggerController {
 
-    private final WorkflowEventProducer eventProducer;
+    private final WorkflowEventProducerMOD eventProducer;
 
     @PostMapping("/{workflowId}/{nodeId}")
     public ResponseEntity<String> webhookTrigger(
@@ -28,7 +28,7 @@ public class WebhookTriggerController {
         metadata.put("nodeId", nodeId);
         metadata.put("input", input);
 
-        WorkflowEvent event = new WorkflowEvent(
+        WorkflowEventREM event = new WorkflowEventREM(
                 workflowId,
                 null,
                 "WEBHOOK_TRIGGERED",
