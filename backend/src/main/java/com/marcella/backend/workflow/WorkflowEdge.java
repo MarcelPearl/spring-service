@@ -22,22 +22,4 @@ public class WorkflowEdge {
     private String targetHandle;
     private String type;
     private Map<String, Object> data;
-
-    public WorkflowEdge(String source, String target) {
-        this.source = source;
-        this.target = target;
-        this.sourceHandle = "output";
-        this.targetHandle = "input";
-        this.type = "default";
-        this.data = new HashMap<>();
-    }
-
-    public WorkflowEdge(String source, String target, String sourceHandle, String targetHandle) {
-        this.source = source;
-        this.target = target;
-        this.sourceHandle = sourceHandle;
-        this.targetHandle = targetHandle;
-        this.type = "conditional";
-        this.data = new HashMap<>();
-    }
 }

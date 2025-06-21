@@ -29,31 +29,25 @@ public class StartNodeHandler implements NodeHandler {
         log.info("Start node executed for workflow: {} node: {}", message.getWorkflowId(), message.getNodeId());
 
         try {
-            // Start node doesn't do much processing, just initializes context
             Map<String, Object> output = new HashMap<>();
 
-            // Pass through any context from the node data
             if (message.getNodeData() != null && message.getNodeData().containsKey("context")) {
                 Map<String, Object> nodeContext = (Map<String, Object>) message.getNodeData().get("context");
                 output.putAll(nodeContext);
                 log.info("Start node initialized workflow with {} variables", nodeContext.size());
             }
 
-            // Add any context that was passed in the execution message
             if (message.getContext() != null) {
                 output.putAll(message.getContext());
             }
 
-            // Add execution metadata
             output.put("node_executed_at", Instant.now().toString());
             output.put("node_type", "start");
             output.put("execution_id", message.getExecutionId().toString());
             output.put("started_by", "workflow_coordinator");
 
-            // Calculate processing time
             long processingTime = System.currentTimeMillis() - startTime;
 
-            // Publish completion event
             publishCompletionEvent(message, output, "COMPLETED", processingTime);
 
             return output;

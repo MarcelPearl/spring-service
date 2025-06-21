@@ -1,8 +1,8 @@
 package com.marcella.backend.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marcella.backend.workflow.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,6 +17,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ExecutionContextService {
 
     @Qualifier("customStringRedisTemplate")
@@ -67,10 +68,6 @@ public class ExecutionContextService {
         }
     }
 
-    public List<String> getReadyNodes(UUID executionId) {
-        return customStringRedisTemplate.opsForList().range(READY_NODES_KEY + executionId, 0, -1);
-    }
-
     public void addReadyNodes(UUID executionId, List<String> nodeIds) {
         String readyKey = READY_NODES_KEY + executionId;
         nodeIds.forEach(nodeId -> redisTemplate.opsForList().rightPush(readyKey, nodeId));
@@ -92,4 +89,17 @@ public class ExecutionContextService {
         redisTemplate.opsForValue().set(dependencyKey, graph);
         redisTemplate.expire(dependencyKey, DEFAULT_EXPIRATION);
     }
+
+    public void clearExecution(UUID executionId) {
+        String contextKey = CONTEXT_KEY + executionId;
+        String dependencyKey = DEPENDENCY_KEY + executionId;
+        String readyKey = READY_NODES_KEY + executionId;
+
+        redisTemplate.delete(contextKey);
+        redisTemplate.delete(dependencyKey);
+        redisTemplate.delete(readyKey);
+
+        log.info("Cleared execution data for: {}", executionId);
+    }
+
 }

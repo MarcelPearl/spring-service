@@ -295,4 +295,70 @@ public class DistributedWorkflowCoordinator {
 
         return new ArrayList<>();
     }
+
+    public void handleNodeCompletion(NodeCompletionMessage completionMessage) {
+        UUID executionId = completionMessage.getExecutionId();
+        String completedNodeId = completionMessage.getNodeId();
+
+        log.info("Processing completion for node: {} in execution: {}", completedNodeId, executionId);
+
+        try {
+            if (completionMessage.getOutput() != null && !completionMessage.getOutput().isEmpty()) {
+                contextService.updateNodeOutput(executionId, completedNodeId, completionMessage.getOutput());
+                log.info("Updated context with output from node: {}", completedNodeId);
+            }
+
+            List<String> newlyReadyNodes = kahnService.processNodeCompletion(executionId, completedNodeId);
+
+            if (!newlyReadyNodes.isEmpty()) {
+                log.info("Ready nodes after completion: {}", newlyReadyNodes);
+
+                contextService.addReadyNodes(executionId, newlyReadyNodes);
+
+                ExecutionContext context = contextService.getContext(executionId);
+                Workflows workflow = workflowRepository.findById(context.getWorkflowId())
+                        .orElseThrow(() -> new RuntimeException("Workflow not found"));
+
+                WorkflowDefinition workflowDef = workflowDefinitionParser.parseWorkflowDefinition(workflow);
+
+                routeNodesToServices(executionId, newlyReadyNodes, workflowDef);
+            } else {
+                log.info("No new ready nodes after completing: {}", completedNodeId);
+
+                if (kahnService.isWorkflowComplete(executionId)) {
+                    completeWorkflowExecution(executionId);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to process node completion: {} for execution: {}", completedNodeId, executionId, e);
+
+            Execution execution = executionRepository.findById(executionId)
+                    .orElse(null);
+            if (execution != null) {
+                executionService.failExecution(execution, "Node completion processing failed: " + e.getMessage());
+            }
+        }
+    }
+
+    private void completeWorkflowExecution(UUID executionId) {
+        log.info("Workflow execution completed: {}", executionId);
+
+        try {
+            Execution execution = executionRepository.findById(executionId)
+                    .orElseThrow(() -> new RuntimeException("Execution not found: " + executionId));
+
+            ExecutionContext context = contextService.getContext(executionId);
+            Map<String, Object> finalOutput = context != null ? context.getGlobalVariables() : Map.of();
+
+            executionService.completeExecution(execution, finalOutput);
+
+            contextService.clearExecution(executionId);
+
+            log.info("Workflow execution successfully completed and cleaned up: {}", executionId);
+
+        } catch (Exception e) {
+            log.error("Failed to complete workflow execution: {}", executionId, e);
+        }
+    }
 }
