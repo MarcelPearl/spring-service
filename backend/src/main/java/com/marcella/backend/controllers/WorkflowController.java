@@ -5,11 +5,13 @@ import com.marcella.backend.repositories.ExecutionRepository;
 import com.marcella.backend.repositories.WorkflowRepository;
 import com.marcella.backend.responses.PageResponse;
 import com.marcella.backend.services.DistributedWorkflowCoordinator;
+import com.marcella.backend.services.JwtService;
 import com.marcella.backend.services.WorkflowService;
 import com.marcella.backend.sidebar.SidebarStatsResponse;
 import com.marcella.backend.sidebar.SidebarStatsService;
 import com.marcella.backend.workflow.CreateWorkflowRequest;
 import com.marcella.backend.workflow.WorkflowDto;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -38,6 +40,7 @@ public class WorkflowController {
 
     private final WorkflowService workflowService;
     private final DistributedWorkflowCoordinator workflowCoordinator;
+    private final JwtService jwtService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PageResponse<WorkflowDto>> getWorkflows(
@@ -102,14 +105,37 @@ public class WorkflowController {
     }
 
     @PostMapping("/{workflowId}/run")
-    public ResponseEntity<Map<String, Object>> runWorkflow(@PathVariable UUID workflowId) {
+    public ResponseEntity<Map<String, Object>> runWorkflow(
+            @PathVariable UUID workflowId,
+            @RequestBody(required = false) Map<String, Object> payload,
+            HttpServletRequest request
+    ) {
         try {
-            workflowCoordinator.startWorkflowExecution(workflowId);
+            if (payload == null) {
+                payload = new HashMap<>();
+            }
+
+            String googleToken = request.getHeader("X-Google-Access-Token");
+            if (googleToken != null && !googleToken.isBlank()) {
+                payload.put("googleAccessToken", googleToken);
+            }
+
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwt = authHeader.substring(7);
+                String userEmail = jwtService.extractEmail(jwt);
+                payload.put("user_email", userEmail);
+            }
+
+            UUID executionId = workflowCoordinator.startWorkflowExecution(workflowId, payload);
+
             return ResponseEntity.ok(Map.of(
                     "message", "Workflow execution started",
                     "workflowId", workflowId,
+                    "executionId", executionId,
                     "status", "INITIATED"
             ));
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", e.getMessage(),
@@ -118,6 +144,8 @@ public class WorkflowController {
             ));
         }
     }
+
+
 
     private UUID getUserIdFromAuth(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {

@@ -10,7 +10,6 @@ public class BasicCalculator {
             throw new IllegalArgumentException("Expression cannot be null or empty");
         }
 
-        // Remove spaces and validate
         String cleanExpression = expression.replaceAll("\\s+", "");
         validateExpression(cleanExpression);
 
@@ -23,17 +22,14 @@ public class BasicCalculator {
     }
 
     private static void validateExpression(String expression) {
-        // Basic validation
         if (expression.isEmpty()) {
             throw new IllegalArgumentException("Empty expression");
         }
 
-        // Check for invalid characters
         if (!expression.matches("[0-9+\\-*/.()]+")) {
             throw new IllegalArgumentException("Expression contains invalid characters");
         }
 
-        // Check balanced parentheses
         int parenthesesCount = 0;
         for (char c : expression.toCharArray()) {
             if (c == '(') parenthesesCount++;
@@ -85,7 +81,6 @@ public class BasicCalculator {
             return left;
         }
 
-        // Handle * and / (higher precedence)
         private double parseMultiplicationDivision() {
             double left = parseFactor();
 
@@ -109,7 +104,6 @@ public class BasicCalculator {
             return left;
         }
 
-        // Handle numbers, parentheses, and unary operators
         private double parseFactor() {
             if (position >= expression.length()) {
                 throw new IllegalArgumentException("Unexpected end of expression");
@@ -117,19 +111,16 @@ public class BasicCalculator {
 
             char currentChar = expression.charAt(position);
 
-            // Handle unary minus
             if (currentChar == '-') {
                 position++;
                 return -parseFactor();
             }
 
-            // Handle unary plus
             if (currentChar == '+') {
                 position++;
                 return parseFactor();
             }
 
-            // Handle parentheses
             if (currentChar == '(') {
                 position++; // consume '('
                 double result = parseAdditionSubtraction();
@@ -140,7 +131,6 @@ public class BasicCalculator {
                 return result;
             }
 
-            // Handle numbers
             return parseNumber();
         }
 
@@ -178,7 +168,6 @@ public class BasicCalculator {
         }
     }
 
-    // Result wrapper for safe evaluation
     public static class CalculationResult {
         private final double result;
         private final String originalExpression;
