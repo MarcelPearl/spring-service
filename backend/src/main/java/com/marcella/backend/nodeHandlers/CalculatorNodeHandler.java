@@ -23,11 +23,6 @@ public class CalculatorNodeHandler implements NodeHandler {
 
     private final WorkflowEventProducer eventProducer;
 
-    @PostConstruct
-    public void init() {
-        log.info("✅ CalculatorNodeHandler initialized with BasicCalculator");
-    }
-
     @Override
     public boolean canHandle(String nodeType) {
         return Objects.equals(nodeType, "calculator");
@@ -44,7 +39,6 @@ public class CalculatorNodeHandler implements NodeHandler {
 
             log.info("Calculator node context variables: {}", context.keySet());
 
-            // Get and substitute variables in the expression
             String rawExpression = (String) nodeData.get("expression");
             if (rawExpression == null || rawExpression.trim().isEmpty()) {
                 throw new IllegalArgumentException("No expression provided");
@@ -53,7 +47,6 @@ public class CalculatorNodeHandler implements NodeHandler {
             String expression = TemplateUtils.substitute(rawExpression, context);
             log.info("Evaluating expression: '{}'", expression);
 
-            // Use custom BasicCalculator instead of JavaScript engine
             BasicCalculator.CalculationResult calculationResult = BasicCalculator.safeEvaluate(expression);
 
             Map<String, Object> output = new HashMap<>(context);
@@ -75,7 +68,6 @@ public class CalculatorNodeHandler implements NodeHandler {
                 return output;
 
             } else {
-                // Handle calculation failure
                 throw new RuntimeException("Calculation failed: " + calculationResult.getErrorMessage());
             }
 
