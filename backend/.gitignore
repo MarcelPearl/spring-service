@@ -34,3 +34,9 @@ build/
 
 # Ignore all environment files
 .env
+
+**/src/main/resources/credentials.json
+
+
+
+

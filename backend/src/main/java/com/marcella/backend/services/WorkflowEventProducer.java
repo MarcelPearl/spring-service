@@ -31,13 +31,14 @@ public class WorkflowEventProducer {
 
     private static final Set<String> SPRING_NODE_TYPES = Set.of(
             "start",
-            "action", "email",
+            "action",
             "transform",
             "delay",
-            "trigger", "webhook",
+            "trigger",
             "calculator",
-            "currentTime", "current-time",
-            "condition", "filter", "conditional"
+            "currentTime",
+            "condition",
+            "googleCalender"
     );
 
     public void publishNodeExecution(NodeExecutionMessage message) {

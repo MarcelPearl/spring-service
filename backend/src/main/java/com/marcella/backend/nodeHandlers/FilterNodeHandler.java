@@ -21,9 +21,7 @@ public class FilterNodeHandler implements NodeHandler {
 
     @Override
     public boolean canHandle(String nodeType) {
-        return "condition".equalsIgnoreCase(nodeType) ||
-                "filter".equalsIgnoreCase(nodeType) ||
-                "conditional".equalsIgnoreCase(nodeType);
+        return "condition".equalsIgnoreCase(nodeType);
     }
 
     @Override
