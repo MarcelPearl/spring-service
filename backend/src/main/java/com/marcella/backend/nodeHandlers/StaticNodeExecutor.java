@@ -25,18 +25,17 @@ public class StaticNodeExecutor {
 
     private final List<NodeHandler> nodeHandlers;
     private final WorkflowEventProducer eventProducer;
-
-    @KafkaListener(
-            topics = "spring-nodes",
-            groupId = "spring-node-executor",
-            containerFactory = "nodeExecutionListenerFactory"
-    )
     @PostConstruct
     public void printHandlers() {
         System.out.println( nodeHandlers.stream()
                 .map(h -> h.getClass().getSimpleName())
                 .toList());
     }
+    @KafkaListener(
+            topics = "spring-nodes",
+            groupId = "spring-node-executor",
+            containerFactory = "nodeExecutionListenerFactory"
+    )
     public void executeNode(
             @Payload NodeExecutionMessage message,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
