@@ -23,4 +23,5 @@ public class NodeCompletionMessage {
     private String error;
     private Instant timestamp;
     private long processingTime;
+    private String service = "spring";
 }

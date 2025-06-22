@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.script.ScriptException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -53,7 +54,7 @@ public class DelayNodeHandler implements NodeHandler {
 
             return output;
 
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             long processingTime = System.currentTimeMillis() - startTime;
             log.error("Delay node failed: {}", message.getNodeId(), e);
             publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED", processingTime);

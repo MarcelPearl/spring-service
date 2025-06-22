@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # Kafka with KRaft mode (no Zookeeper needed)
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: workflow-kafka
+    ports:
+      - "9092:9092"   # External access for host services
+      - "9094:9094"   # Alternative external port
+    environment:
+      # KRaft configuration (Kafka without Zookeeper)
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+
+      # Listener configuration for both internal and external access
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+
+      # Controller and inter-broker settings
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+
+      # Topic and replication settings
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_NUM_PARTITIONS=3
+
+      # Performance and reliability settings
+      - KAFKA_CFG_LOG_RETENTION_HOURS=24
+      - KAFKA_CFG_LOG_RETENTION_BYTES=1073741824  # 1GB
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=67108864      # 64MB
+      - KAFKA_CFG_LOG_CLEANUP_POLICY=delete
+
+      # Security settings
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_SECURITY_PROTOCOL=PLAINTEXT
+
+      # JVM settings for production
+      - KAFKA_HEAP_OPTS=-Xmx1G -Xms1G
+
+    volumes:
+      - kafka_data:/bitnami/kafka
+    networks:
+      - workflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:29092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # Kafka UI for management and monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: workflow-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=workflow-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - KAFKA_CLUSTERS_0_METRICS_PORT=9997
+      - DYNAMIC_CONFIG_ENABLED=true
+      - LOGGING_LEVEL_ROOT=INFO
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - workflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Redis for context sharing and caching
+  redis:
+    image: redis:7-alpine
+    container_name: workflow-redis
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --appendonly yes 
+      --appendfsync everysec
+      --maxmemory 2gb 
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 0
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+      - redis_conf:/usr/local/etc/redis
+    networks:
+      - workflow-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    sysctls:
+      - net.core.somaxconn=65535
+
+  # Redis Commander for Redis management (optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: workflow-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=workflow-redis:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin123
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - workflow-network
+    restart: unless-stopped
+
+# Named volumes for data persistence
+volumes:
+  kafka_data:
+    driver: local
+  redis_data:
+    driver: local
+  redis_conf:
+    driver: local
+
+# Shared network for service communication
+networks:
+  workflow-network:
+    name: workflow-network
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

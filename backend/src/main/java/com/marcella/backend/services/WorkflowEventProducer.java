@@ -32,8 +32,8 @@ public class WorkflowEventProducer {
 
     private String determineTopicByNodeType(String nodeType) {
         return switch (nodeType.toLowerCase()) {
-            case "start", "email", "transform", "delay", "webhook" -> "spring-nodes";
-            case "python-task", "data-processing" -> "fastapi-nodes";
+            case "start", "email", "transform", "delay", "webhook" ,"calculator" -> "spring-nodes";
+            case "python-task", "text-generation", "question-answer", "k-means","clusterization" -> "fastapi-nodes";
             default -> "spring-nodes";
         };
     }
