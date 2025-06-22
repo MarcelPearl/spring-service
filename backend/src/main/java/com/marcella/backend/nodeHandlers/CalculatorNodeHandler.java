@@ -1,19 +1,16 @@
 package com.marcella.backend.nodeHandlers;
 
 import com.marcella.backend.services.WorkflowEventProducer;
+import com.marcella.backend.utils.BasicCalculator;
 import com.marcella.backend.utils.TemplateUtils;
 import com.marcella.backend.workflow.NodeCompletionMessage;
 import com.marcella.backend.workflow.NodeExecutionMessage;
-import com.marcella.backend.nodeHandlers.NodeHandler;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,20 +19,22 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CalculatorNodeHandler implements NodeHandler{
+public class CalculatorNodeHandler implements NodeHandler {
 
     private final WorkflowEventProducer eventProducer;
+
     @PostConstruct
     public void init() {
-        log.info("✅ CalculatorNodeHandler initialized");
+        log.info("✅ CalculatorNodeHandler initialized with BasicCalculator");
     }
+
     @Override
     public boolean canHandle(String nodeType) {
         return Objects.equals(nodeType, "calculator");
     }
 
     @Override
-    public Map<String, Object> execute(NodeExecutionMessage message)throws ScriptException {
+    public Map<String, Object> execute(NodeExecutionMessage message) {
         long startTime = System.currentTimeMillis();
         log.info("Executing calculator node: {}", message.getNodeId());
 
@@ -45,27 +44,40 @@ public class CalculatorNodeHandler implements NodeHandler{
 
             log.info("Calculator node context variables: {}", context.keySet());
 
-            // Substitute any variables in the expression
+            // Get and substitute variables in the expression
             String rawExpression = (String) nodeData.get("expression");
+            if (rawExpression == null || rawExpression.trim().isEmpty()) {
+                throw new IllegalArgumentException("No expression provided");
+            }
+
             String expression = TemplateUtils.substitute(rawExpression, context);
-            log.info("Evaluating expression: {}", expression);
+            log.info("Evaluating expression: '{}'", expression);
 
-            // Evaluate the arithmetic expression using JavaScript engine
-            ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
-            Object evalResult = engine.eval(expression);
+            // Use custom BasicCalculator instead of JavaScript engine
+            BasicCalculator.CalculationResult calculationResult = BasicCalculator.safeEvaluate(expression);
 
-            // Prepare output
             Map<String, Object> output = new HashMap<>(context);
-            output.put("expression", expression);
-            output.put("result", evalResult);
-            output.put("node_type", "calculator");
-            output.put("executed_at", Instant.now().toString());
 
-            long processingTime = System.currentTimeMillis() - startTime;
-            publishCompletionEvent(message, output, "COMPLETED", processingTime);
+            if (calculationResult.isSuccessful()) {
+                double result = calculationResult.getResult();
 
-            log.info("Expression evaluated successfully: {} = {}", expression, evalResult);
-            return output;
+                output.put("expression", expression);
+                output.put("original_expression", rawExpression);
+                output.put("result", result);
+                output.put("calculation_successful", true);
+                output.put("node_type", "calculator");
+                output.put("executed_at", Instant.now().toString());
+
+                long processingTime = System.currentTimeMillis() - startTime;
+                publishCompletionEvent(message, output, "COMPLETED", processingTime);
+
+                log.info("Expression '{}' evaluated successfully: {}", expression, result);
+                return output;
+
+            } else {
+                // Handle calculation failure
+                throw new RuntimeException("Calculation failed: " + calculationResult.getErrorMessage());
+            }
 
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
@@ -75,13 +87,16 @@ public class CalculatorNodeHandler implements NodeHandler{
             if (message.getContext() != null) {
                 errorOutput.putAll(message.getContext());
             }
+
             errorOutput.put("error", e.getMessage());
             errorOutput.put("expression", message.getNodeData().get("expression"));
             errorOutput.put("result", null);
+            errorOutput.put("calculation_successful", false);
             errorOutput.put("failed_at", Instant.now().toString());
+            errorOutput.put("node_type", "calculator");
 
             publishCompletionEvent(message, errorOutput, "FAILED", processingTime);
-            throw new RuntimeException("Error evaluating expression", e);
+            throw new RuntimeException("Error evaluating expression: " + e.getMessage(), e);
         }
     }
 

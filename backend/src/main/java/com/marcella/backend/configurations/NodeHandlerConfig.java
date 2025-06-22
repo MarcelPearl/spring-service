@@ -17,7 +17,8 @@ public class NodeHandlerConfig {
     private final WebhookNodeHandler webhookNodeHandler;
     private final DelayNodeHandler delayNodeHandler;
     private final FilterNodeHandler filterNodeHandler;
-
+    private final CalculatorNodeHandler calculatorNodeHandler;
+    private final TimeZoneNodeHandler timeZoneNodeHandler;
     @Bean
     public List<NodeHandler> nodeHandlers() {
         return List.of(
@@ -26,7 +27,9 @@ public class NodeHandlerConfig {
                 transformNodeHandler,
                 webhookNodeHandler,
                 delayNodeHandler,
-                filterNodeHandler
+                filterNodeHandler,
+                calculatorNodeHandler,
+                timeZoneNodeHandler
         );
     }
 }
