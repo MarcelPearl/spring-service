@@ -3,6 +3,7 @@ package com.marcella.backend.nodeHandlers;
 import com.marcella.backend.services.WorkflowEventProducer;
 import com.marcella.backend.workflow.NodeCompletionMessage;
 import com.marcella.backend.workflow.NodeExecutionMessage;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -11,7 +12,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
-
+import com.marcella.backend.nodeHandlers.NodeHandler;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,12 @@ public class StaticNodeExecutor {
             groupId = "spring-node-executor",
             containerFactory = "nodeExecutionListenerFactory"
     )
+    @PostConstruct
+    public void printHandlers() {
+        System.out.println( nodeHandlers.stream()
+                .map(h -> h.getClass().getSimpleName())
+                .toList());
+    }
     public void executeNode(
             @Payload NodeExecutionMessage message,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,

@@ -27,7 +27,7 @@ public class FilterNodeHandler implements NodeHandler {
     }
 
     @Override
-    public Map<String, Object> execute(NodeExecutionMessage message) {
+    public Map<String, Object> execute(NodeExecutionMessage message) throws InterruptedException {
         long startTime = System.currentTimeMillis();
         log.info("Executing filter/condition node: {}", message.getNodeId());
 

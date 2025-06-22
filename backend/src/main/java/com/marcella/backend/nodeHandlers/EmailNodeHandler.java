@@ -16,7 +16,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class EmailNodeHandler implements NodeHandler {
+public class EmailNodeHandler implements NodeHandler  {
 
     private final WorkflowEventProducer eventProducer;
     private final EmailService emailService;
@@ -100,3 +100,4 @@ public class EmailNodeHandler implements NodeHandler {
                 message.getNodeId(), status, processingTime);
     }
 }
+
