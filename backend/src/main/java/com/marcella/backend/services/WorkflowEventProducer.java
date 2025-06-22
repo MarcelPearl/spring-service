@@ -17,20 +17,16 @@ public class WorkflowEventProducer {
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     private static final Set<String> FASTAPI_NODE_TYPES = Set.of(
-            "text-generation", "text_generation",
-            "k-means", "k_means",
-            "python-task", "python_task",
-            "question-answer", "question_answer",
-            "clusterization",
-            "summarizatoin",
-            "ai_decision", "ai-decision",
-            "ai_classification", "ai-classification",
-            "ai_analysis", "ai-analysis",
-            "llm_prompt", "llm-prompt",
-            "ai_transform", "ai-transform",
-            "sentiment_analysis", "sentiment-analysis",
-            "data_analysis", "data-analysis",
-            "ml_prediction", "ml-prediction"
+            "text-generation",
+            "ai-decision",
+            "summarization",
+            "question-answer",
+            "text-classification",
+            "named-entity",
+            "translation",
+            "content-generation",
+            "search-agent",
+            "data-analyst-agent"
     );
 
     private static final Set<String> SPRING_NODE_TYPES = Set.of(
