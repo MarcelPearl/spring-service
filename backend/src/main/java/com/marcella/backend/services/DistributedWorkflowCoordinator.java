@@ -44,6 +44,12 @@ public class DistributedWorkflowCoordinator {
             context.getGlobalVariables().putAll(payload);
             context.getGlobalVariables().put("payload_received", true);
             context.getGlobalVariables().put("payload_timestamp", Instant.now().toString());
+
+            Object token = payload.get("googleAccessToken");
+            if (token instanceof String && !((String) token).isBlank()) {
+                context.getGlobalVariables().put("googleAccessToken", token);
+                log.info("Google access token added to execution context");
+            }
             log.info("Added {} payload variables to execution context", payload.size());
         }
 
@@ -57,6 +63,7 @@ public class DistributedWorkflowCoordinator {
         log.info("Initialized execution context for: {} with {} variables",
                 executionId, context.getGlobalVariables().size());
     }
+
 
     public void startWorkflowExecution(UUID workflowId) {
         Workflows workflow = workflowRepository.findById(workflowId)
@@ -249,6 +256,13 @@ public class DistributedWorkflowCoordinator {
 
         Map<String, Object> nodeContext = buildNodeContext(executionId, node.getId(), context);
 
+        String googleToken = null;
+        if (nodeContext.containsKey("googleAccessToken")) {
+            Object tokenObj = nodeContext.get("googleAccessToken");
+            if (tokenObj instanceof String) {
+                googleToken = (String) tokenObj;
+            }
+        }
         NodeExecutionMessage message = NodeExecutionMessage.builder()
                 .executionId(executionId)
                 .workflowId(workflowId)
@@ -258,6 +272,7 @@ public class DistributedWorkflowCoordinator {
                 .context(nodeContext)
                 .dependencies(getDependencies(executionId, node.getId()))
                 .timestamp(Instant.now())
+                .googleAccessToken(googleToken)
                 .priority(NodeExecutionMessage.Priority.NORMAL)
                 .build();
 

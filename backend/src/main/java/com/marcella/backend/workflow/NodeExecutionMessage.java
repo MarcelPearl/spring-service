@@ -24,6 +24,7 @@ public class NodeExecutionMessage {
     private List<String> dependencies;
     private Instant timestamp;
     private Priority priority;
+    private String googleAccessToken;
 
     public enum Priority {
         HIGH, NORMAL, LOW
