@@ -29,7 +29,7 @@ public class HttpRequestNodeHandler implements NodeHandler {
 
     @Override
     public boolean canHandle(String nodeType) {
-        return "httpRequest".equalsIgnoreCase(nodeType);
+        return nodeType.toLowerCase().startsWith("http");
     }
 
     @Override
@@ -120,34 +120,37 @@ public class HttpRequestNodeHandler implements NodeHandler {
     private Map<String, String> processHeaders(Object headersObj, Map<String, Object> context) {
         Map<String, String> processedHeaders = new HashMap<>();
 
-        if (headersObj == null) {
-            return processedHeaders;
-        }
+        if (headersObj == null) return processedHeaders;
 
         try {
-            Map<String, Object> headersMap;
+            if (headersObj instanceof String headersStr) {
+                headersStr = TemplateUtils.substitute(headersStr, context);
 
-            if (headersObj instanceof String) {
-                String headersJson = TemplateUtils.substitute((String) headersObj, context);
-                if (headersJson.trim().isEmpty() || headersJson.equals("{}")) {
-                    return processedHeaders;
+                if (headersStr.trim().isEmpty()) return processedHeaders;
+
+                String[] pairs = headersStr.split(",");
+
+                for (String pair : pairs) {
+                    String[] kv = pair.trim().split(":", 2); // Split only on first colon
+                    if (kv.length == 2) {
+                        String key = TemplateUtils.substitute(kv[0].trim(), context);
+                        String value = TemplateUtils.substitute(kv[1].trim(), context);
+                        processedHeaders.put(key, value);
+                    } else {
+                        log.warn("⚠️ Invalid header format: '{}'", pair);
+                    }
                 }
-                headersMap = objectMapper.readValue(headersJson, new TypeReference<Map<String, Object>>() {});
-            } else if (headersObj instanceof Map) {
-                headersMap = (Map<String, Object>) headersObj;
+            } else if (headersObj instanceof Map<?, ?> map) {
+                for (Map.Entry<?, ?> entry : map.entrySet()) {
+                    String key = TemplateUtils.substitute(entry.getKey().toString(), context);
+                    String value = TemplateUtils.substitute(entry.getValue().toString(), context);
+                    processedHeaders.put(key, value);
+                }
             } else {
-                log.warn("Headers object is neither String nor Map, ignoring");
-                return processedHeaders;
+                log.warn("⚠️ Headers object is neither a String nor Map: {}", headersObj.getClass().getSimpleName());
             }
-
-            for (Map.Entry<String, Object> entry : headersMap.entrySet()) {
-                String key = TemplateUtils.substitute(entry.getKey(), context);
-                String value = TemplateUtils.substitute(String.valueOf(entry.getValue()), context);
-                processedHeaders.put(key, value);
-            }
-
         } catch (Exception e) {
-            log.error("Failed to process headers: {}", e.getMessage());
+            log.error("❌ Failed to process headers: {}", e.getMessage(), e);
             throw new RuntimeException("Invalid headers format: " + e.getMessage());
         }
 
@@ -155,44 +158,53 @@ public class HttpRequestNodeHandler implements NodeHandler {
     }
 
     private Object processBody(Object bodyObj, Map<String, Object> context) {
-        if (bodyObj == null) {
-            return null;
-        }
+        if (bodyObj == null) return null;
 
         try {
-            if (bodyObj instanceof String) {
-                String bodyStr = (String) bodyObj;
-                bodyStr = TemplateUtils.substitute(bodyStr, context);
+            if (bodyObj instanceof String bodyStr) {
+                bodyStr = TemplateUtils.substitute(bodyStr, context).trim();
 
-                if (bodyStr.trim().isEmpty()) {
-                    return null;
+                if (bodyStr.isEmpty()) return null;
+
+                String wrapped = bodyStr;
+                if (!bodyStr.startsWith("{") && !bodyStr.endsWith("}")) {
+                    wrapped = "{" + bodyStr + "}";
                 }
+
                 try {
-                    return objectMapper.readValue(bodyStr, Object.class);
-                } catch (Exception e) {
-                    return bodyStr;
-                }
-            } else if (bodyObj instanceof Map) {
-                Map<String, Object> bodyMap = (Map<String, Object>) bodyObj;
-                Map<String, Object> processedBody = new HashMap<>();
-
-                for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
-                    String key = TemplateUtils.substitute(entry.getKey(), context);
-                    Object value = entry.getValue();
-
-                    if (value instanceof String) {
-                        value = TemplateUtils.substitute((String) value, context);
+                    return objectMapper.readValue(wrapped, Object.class);
+                } catch (Exception jsonEx) {
+                    Map<String, Object> bodyMap = new HashMap<>();
+                    String[] pairs = bodyStr.split(",");
+                    for (String pair : pairs) {
+                        String[] kv = pair.trim().split(":", 2);
+                        if (kv.length == 2) {
+                            String key = TemplateUtils.substitute(kv[0].trim().replaceAll("^\"|\"$", ""), context);
+                            String value = TemplateUtils.substitute(kv[1].trim().replaceAll("^\"|\"$", ""), context);
+                            bodyMap.put(key, value);
+                        } else {
+                            log.warn("⚠️ Invalid body entry: '{}'", pair);
+                        }
                     }
+                    return bodyMap;
+                }
 
+            } else if (bodyObj instanceof Map<?, ?> bodyMap) {
+                Map<String, Object> processedBody = new HashMap<>();
+                for (Map.Entry<?, ?> entry : bodyMap.entrySet()) {
+                    String key = TemplateUtils.substitute(entry.getKey().toString(), context);
+                    Object value = entry.getValue();
+                    if (value instanceof String strVal) {
+                        value = TemplateUtils.substitute(strVal, context);
+                    }
                     processedBody.put(key, value);
                 }
-
                 return processedBody;
             } else {
                 return bodyObj;
             }
         } catch (Exception e) {
-            log.error("Failed to process body: {}", e.getMessage());
+            log.error("❌ Failed to process body: {}", e.getMessage(), e);
             throw new RuntimeException("Invalid body format: " + e.getMessage());
         }
     }
