@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,7 +24,8 @@ public class WebhookTriggerController {
             @RequestBody(required = false) Map<String, Object> payload) {
 
         try {
-            UUID executionId = coordinator.startWorkflowExecution(workflowId, payload);
+            List<String> emptyList = Collections.emptyList();
+            UUID executionId = coordinator.startWorkflowExecution(workflowId, payload ,emptyList );
 
             return ResponseEntity.ok(Map.of(
                     "status", "triggered",
