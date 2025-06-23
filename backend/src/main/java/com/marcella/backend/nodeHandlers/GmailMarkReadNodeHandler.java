@@ -36,17 +36,14 @@ public class GmailMarkReadNodeHandler implements NodeHandler {
             Map<String, Object> context = message.getContext();
             Map<String, Object> data = message.getNodeData();
 
-            // Check for Google access token
             String googleToken = (String) context.get("googleAccessToken");
             if (googleToken == null || googleToken.isBlank()) {
                 throw new IllegalStateException("Missing Google access token for Gmail operation");
             }
 
-            // Process template substitutions
             String messageIdsStr = TemplateUtils.substitute((String) data.getOrDefault("messageIds", ""), context);
             Boolean markAsRead = Boolean.valueOf(TemplateUtils.substitute(String.valueOf(data.getOrDefault("markAsRead", "true")), context));
 
-            // Parse message IDs (can be comma-separated)
             List<String> messageIds = new ArrayList<>();
             if (messageIdsStr != null && !messageIdsStr.trim().isEmpty()) {
                 String[] ids = messageIdsStr.split(",");
@@ -58,7 +55,6 @@ public class GmailMarkReadNodeHandler implements NodeHandler {
                 }
             }
 
-            // If no specific message IDs provided, try to get from previous node output
             if (messageIds.isEmpty()) {
                 Object gmailMessages = context.get("gmail_messages");
                 if (gmailMessages instanceof List) {
@@ -81,10 +77,8 @@ public class GmailMarkReadNodeHandler implements NodeHandler {
 
             log.info("Marking {} messages as {}: {}", messageIds.size(), markAsRead ? "read" : "unread", messageIds);
 
-            // Create Gmail service
             Gmail service = GmailConfig.getGmailService(googleToken);
 
-            // Modify messages
             List<String> successfullyModified = new ArrayList<>();
             List<String> failedToModify = new ArrayList<>();
 
@@ -93,10 +87,8 @@ public class GmailMarkReadNodeHandler implements NodeHandler {
                     ModifyMessageRequest modifyRequest = new ModifyMessageRequest();
 
                     if (markAsRead) {
-                        // Remove UNREAD label to mark as read
                         modifyRequest.setRemoveLabelIds(Collections.singletonList("UNREAD"));
                     } else {
-                        // Add UNREAD label to mark as unread
                         modifyRequest.setAddLabelIds(Collections.singletonList("UNREAD"));
                     }
 
@@ -113,7 +105,6 @@ public class GmailMarkReadNodeHandler implements NodeHandler {
                 }
             }
 
-            // Build output
             if (context != null) output.putAll(context);
             output.put("gmail_messages_modified", successfullyModified.size());
             output.put("gmail_successfully_modified", successfullyModified);

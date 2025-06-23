@@ -1,14 +1,10 @@
 package com.marcella.backend.controllers;
 
 import com.marcella.backend.entities.Users;
-import com.marcella.backend.repositories.ExecutionRepository;
-import com.marcella.backend.repositories.WorkflowRepository;
 import com.marcella.backend.responses.PageResponse;
 import com.marcella.backend.services.DistributedWorkflowCoordinator;
 import com.marcella.backend.services.JwtService;
 import com.marcella.backend.services.WorkflowService;
-import com.marcella.backend.sidebar.SidebarStatsResponse;
-import com.marcella.backend.sidebar.SidebarStatsService;
 import com.marcella.backend.workflow.CreateWorkflowRequest;
 import com.marcella.backend.workflow.WorkflowDto;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -118,11 +113,9 @@ public class WorkflowController {
                 payload = new HashMap<>();
             }
 
-            // Log the incoming request for debugging
             log.info("🚀 Starting workflow execution: {} with payload keys: {}",
                     workflowId, payload.keySet());
 
-            // Add Google token from header
             String googleToken = request.getHeader("X-Google-Access-Token");
             if (googleToken != null && !googleToken.isBlank()) {
                 payload.put("googleAccessToken", googleToken);
@@ -131,7 +124,6 @@ public class WorkflowController {
                 log.warn("⚠️ No Google access token found in headers");
             }
 
-            // Add user info from JWT
             String authHeader = request.getHeader("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String jwt = authHeader.substring(7);
@@ -144,11 +136,9 @@ public class WorkflowController {
                 }
             }
 
-            // Add system variables
             payload.put("execution_started_at", Instant.now().toString());
             payload.put("workflow_id", workflowId.toString());
 
-            // Debug log final payload (excluding sensitive data)
             Map<String, Object> logPayload = new HashMap<>(payload);
             logPayload.remove("googleAccessToken"); // Don't log sensitive tokens
             log.info("📦 Final execution payload: {}", logPayload);
