@@ -21,6 +21,7 @@ public class NodeHandlerConfig {
     private final TimeZoneNodeHandler timeZoneNodeHandler;
     private final GoogleCalendarNodeHandler googleCalendarNodeHandler;
     private final HttpRequestNodeHandler httpRequestNodeHandler;
+
     private final GmailSendNodeHandler gmailSendNodeHandler;
     private final GmailSearchNodeHandler gmailSearchNodeHandler;
     private final GmailMarkReadNodeHandler gmailMarkReadNodeHandler;

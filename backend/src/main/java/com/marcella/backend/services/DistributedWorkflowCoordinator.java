@@ -27,7 +27,7 @@ public class DistributedWorkflowCoordinator {
     private final WorkflowDefinitionParser workflowDefinitionParser;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ExecutionRepository executionRepository;
-
+    private final ReturnHandlerService returnHandler;
     private void initializeExecutionContext(UUID executionId, WorkflowDefinition workflowDef,
                                             Map<String, Object> payload) {
 
@@ -93,8 +93,9 @@ public class DistributedWorkflowCoordinator {
         }
     }
 
-    public UUID startWorkflowExecution(UUID workflowId, Map<String, Object> payload) {
-        log.info("Starting workflow execution: {} with payload: {}", workflowId, payload != null ? "provided" : "none");
+    public UUID startWorkflowExecution(UUID workflowId, Map<String, Object> payload,List<String> returnVariables) {
+        log.info("Starting workflow execution: {} with payload: {} and return variables: {}",
+                workflowId, payload != null ? "provided" : "none", returnVariables);
 
         Workflows workflow = workflowRepository.findById(workflowId)
                 .orElseThrow(() -> new RuntimeException("Workflow not found: " + workflowId));
@@ -104,6 +105,12 @@ public class DistributedWorkflowCoordinator {
 
         try {
             WorkflowDefinition workflowDef = workflowDefinitionParser.parseWorkflowDefinition(workflow);
+
+            // Store return variables if provided
+            if (returnVariables != null && !returnVariables.isEmpty()) {
+                returnHandler.storeReturnVariables(executionId, returnVariables);
+                log.info("📋 Stored {} return variables for execution: {}", returnVariables.size(), executionId);
+            }
 
             initializeExecutionContext(executionId, workflowDef, payload);
 
@@ -128,6 +135,12 @@ public class DistributedWorkflowCoordinator {
         } catch (Exception e) {
             log.error("Failed to start workflow execution: {}", workflowId, e);
             executionService.failExecution(execution, e.getMessage());
+
+            // Cleanup return variables on failure
+            if (returnVariables != null && !returnVariables.isEmpty()) {
+                returnHandler.clearReturnVariables(executionId);
+            }
+
             throw new RuntimeException("Failed to start workflow execution: " + e.getMessage(), e);
         }
     }
@@ -320,6 +333,10 @@ public class DistributedWorkflowCoordinator {
         try {
             if (completionMessage.getOutput() != null && !completionMessage.getOutput().isEmpty()) {
                 contextService.updateNodeOutput(executionId, completedNodeId, completionMessage.getOutput());
+
+                // Track return variables if they exist in the output
+                trackReturnVariablesFromOutput(executionId, completionMessage.getOutput());
+
                 log.info("Updated context with output from node: {}", completedNodeId);
             }
 
@@ -352,6 +369,9 @@ public class DistributedWorkflowCoordinator {
                     .orElse(null);
             if (execution != null) {
                 executionService.failExecution(execution, "Node completion processing failed: " + e.getMessage());
+
+                // Cleanup return variables on failure
+                returnHandler.clearReturnVariables(executionId);
             }
         }
     }
@@ -364,16 +384,51 @@ public class DistributedWorkflowCoordinator {
                     .orElseThrow(() -> new RuntimeException("Execution not found: " + executionId));
 
             ExecutionContext context = contextService.getContext(executionId);
-            Map<String, Object> finalOutput = context != null ? context.getGlobalVariables() : Map.of();
+
+            // Create final output with return variables if specified
+            Map<String, Object> finalOutput;
+            List<String> returnVariables = returnHandler.getReturnVariables(executionId);
+
+            if (!returnVariables.isEmpty()) {
+                // Only include requested return variables
+                finalOutput = returnHandler.extractReturnVariables(executionId);
+                log.info("📤 Workflow completed with {} return variables", finalOutput.size());
+            } else {
+                // Return all variables if no specific return variables requested
+                finalOutput = null;
+                log.info("📤 Workflow completed with all {} variables",0);
+            }
 
             executionService.completeExecution(execution, finalOutput);
 
-            contextService.clearExecution(executionId);
 
-            log.info("Workflow execution successfully completed and cleaned up: {}", executionId);
+
+            log.info("Workflow execution successfully completed : {}", executionId);
 
         } catch (Exception e) {
             log.error("Failed to complete workflow execution: {}", executionId, e);
+
+            try {
+                returnHandler.clearReturnVariables(executionId);
+            } catch (Exception cleanupError) {
+                log.warn("Failed to cleanup return variables for execution: {}", executionId, cleanupError);
+            }
+        }
+    }
+    private void trackReturnVariablesFromOutput(UUID executionId, Map<String, Object> output) {
+        log.info("00 output: {}", output);
+        if (output == null || output.isEmpty()) {
+            return;
+        }
+        List<String> returnVariables = returnHandler.getReturnVariables(executionId);
+        log.info("return varibale {}",returnVariables);
+        if (returnVariables.isEmpty()) {
+            return; // No return variables requested
+        }
+
+        // Check if any of the output variables are requested for return
+        for (String returnVar : returnVariables) {
+                log.debug("🎯 Tracked return variable: {} = {}", returnVar, output.get(returnVar));
         }
     }
 }

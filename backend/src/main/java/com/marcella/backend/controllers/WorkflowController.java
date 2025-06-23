@@ -1,10 +1,10 @@
 package com.marcella.backend.controllers;
 
+import com.marcella.backend.entities.Execution;
 import com.marcella.backend.entities.Users;
+import com.marcella.backend.repositories.ExecutionRepository;
 import com.marcella.backend.responses.PageResponse;
-import com.marcella.backend.services.DistributedWorkflowCoordinator;
-import com.marcella.backend.services.JwtService;
-import com.marcella.backend.services.WorkflowService;
+import com.marcella.backend.services.*;
 import com.marcella.backend.workflow.CreateWorkflowRequest;
 import com.marcella.backend.workflow.WorkflowDto;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,9 +25,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/workflows")
@@ -39,7 +37,9 @@ public class WorkflowController {
     private final WorkflowService workflowService;
     private final DistributedWorkflowCoordinator workflowCoordinator;
     private final JwtService jwtService;
-
+    private final ExecutionRepository executionRepository;
+    private final ReturnHandlerService returnHandler;
+    private final ExecutionContextService executionContextService;
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PageResponse<WorkflowDto>> getWorkflows(
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -105,16 +105,36 @@ public class WorkflowController {
     @PostMapping("/{workflowId}/run")
     public ResponseEntity<Map<String, Object>> runWorkflow(
             @PathVariable UUID workflowId,
-            @RequestBody(required = false) Map<String, Object> payload,
+            @RequestBody(required = false) Map<String, Object> requestBody,
             HttpServletRequest request
     ) {
         try {
-            if (payload == null) {
-                payload = new HashMap<>();
+            Map<String, Object> payload = new HashMap<>();
+            boolean waitForCompletion = false;
+            long timeoutMs = 300000;
+            List<String> returnVariables=Collections.emptyList();
+
+            if (requestBody != null) {
+                // Check if it's the new format with returnVariables
+                if (requestBody.containsKey("payload") || requestBody.containsKey("returnVariables") || requestBody.containsKey("waitForCompletion")) {
+                    // New format
+                    Map<String, Object> payloadMap = (Map<String, Object>) requestBody.get("payload");
+                    if (payloadMap != null) {
+                        payload.putAll(payloadMap);
+                    }
+                    returnVariables = (List<String>) requestBody.get("returnVariables");
+                    waitForCompletion = Boolean.TRUE.equals(requestBody.get("waitForCompletion"));
+                    if (requestBody.containsKey("timeoutMs")) {
+                        timeoutMs = ((Number) requestBody.get("timeoutMs")).longValue();
+                    }
+                } else {
+                    // Old format - direct payload
+                    payload.putAll((Map<String, Object>) requestBody.get("payload"));
+                }
             }
 
-            log.info("🚀 Starting workflow execution: {} with payload keys: {}",
-                    workflowId, payload.keySet());
+            log.info("🚀 Starting workflow execution: {} with payload keys: {}, return variables: {}, wait: {}",
+                    workflowId, payload.keySet(), returnVariables, waitForCompletion);
 
             String googleToken = request.getHeader("X-Google-Access-Token");
             if (googleToken != null && !googleToken.isBlank()) {
@@ -140,18 +160,24 @@ public class WorkflowController {
             payload.put("workflow_id", workflowId.toString());
 
             Map<String, Object> logPayload = new HashMap<>(payload);
-            logPayload.remove("googleAccessToken"); // Don't log sensitive tokens
+            logPayload.remove("googleAccessToken");
             log.info("📦 Final execution payload: {}", logPayload);
 
-            UUID executionId = workflowCoordinator.startWorkflowExecution(workflowId, payload);
+            UUID executionId = workflowCoordinator.startWorkflowExecution(workflowId, payload, returnVariables);
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Workflow execution started successfully",
-                    "workflowId", workflowId,
-                    "executionId", executionId,
-                    "status", "INITIATED",
-                    "timestamp", Instant.now().toString()
-            ));
+            if (waitForCompletion) {
+                return waitForExecutionCompletion(executionId, timeoutMs);
+            } else {
+                return ResponseEntity.ok(Map.of(
+                        "message", "Workflow execution started successfully",
+                        "workflowId", workflowId,
+                        "executionId", executionId,
+                        "status", "INITIATED",
+                        "waitForCompletion", false,
+                        "returnVariables", returnVariables != null ? returnVariables : List.of(),
+                        "timestamp", Instant.now().toString()
+                ));
+            }
 
         } catch (Exception e) {
             log.error("❌ Failed to start workflow execution: {}", workflowId, e);
@@ -178,5 +204,81 @@ public class WorkflowController {
         }
 
         throw new RuntimeException("Invalid authentication principal: " + principal);
+    }
+
+    @PostMapping("/{workflowId}/run-sync")
+    public ResponseEntity<Map<String, Object>> runWorkflowSync(
+            @PathVariable UUID workflowId,
+            @RequestBody(required = false) Map<String, Object> payload,
+            @RequestParam(required = false) List<String> returnVariables,
+            @RequestParam(defaultValue = "300000") long timeoutMs,
+            HttpServletRequest httpRequest
+    ) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("payload", payload != null ? payload : new HashMap<>());
+        request.put("returnVariables", returnVariables);
+        request.put("waitForCompletion", true);
+        request.put("timeoutMs", timeoutMs);
+
+        return runWorkflow(workflowId, request, httpRequest);
+    }
+
+    private ResponseEntity<Map<String, Object>> waitForExecutionCompletion(UUID executionId, long timeoutMs) {
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + timeoutMs;
+
+        log.info("⏳ Waiting for execution completion: {} (timeout: {}ms)", executionId, timeoutMs);
+
+        try {
+            while (System.currentTimeMillis() < endTime) {
+                Execution execution = executionRepository.findById(executionId).orElse(null);
+
+                if (execution == null) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "error", "Execution not found",
+                            "executionId", executionId,
+                            "status", "NOT_FOUND"
+                    ));
+                }
+
+                String status = execution.getStatus();
+
+                if ("COMPLETED".equals(status)) {
+                    log.info("✅ Execution completed successfully: {}", executionId);
+                    Map<String, Object> result = returnHandler.createReturnPayload(executionId, "COMPLETED");
+                    returnHandler.clearReturnVariables(executionId);
+                    executionContextService.clearExecution(executionId);
+                    log.info("cleared Execution context: {}", executionId);
+                    return ResponseEntity.ok(result);
+
+                } else if ("FAILED".equals(status)) {
+                    log.error("❌ Execution failed: {}", executionId);
+                    Map<String, Object> result = returnHandler.createReturnPayload(executionId, "FAILED");
+                    result.put("error", execution.getError());
+                    returnHandler.clearReturnVariables(executionId);
+                    return ResponseEntity.ok(result);
+                }
+
+                Thread.sleep(1000); // Check every second
+            }
+
+            log.warn("⏰ Execution timeout reached: {}", executionId);
+            Map<String, Object> result = returnHandler.createReturnPayload(executionId, "TIMEOUT");
+            result.put("error", "Execution timeout after " + timeoutMs + "ms");
+            return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT).body(result);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("🛑 Execution waiting interrupted: {}", executionId, e);
+            Map<String, Object> result = returnHandler.createReturnPayload(executionId, "INTERRUPTED");
+            result.put("error", "Execution waiting interrupted");
+            return ResponseEntity.internalServerError().body(result);
+
+        } catch (Exception e) {
+            log.error("💥 Error while waiting for execution: {}", executionId, e);
+            Map<String, Object> result = returnHandler.createReturnPayload(executionId, "ERROR");
+            result.put("error", "Error while waiting: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(result);
+        }
     }
 }
