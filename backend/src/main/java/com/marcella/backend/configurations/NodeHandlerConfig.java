@@ -21,7 +21,6 @@ public class NodeHandlerConfig {
     private final TimeZoneNodeHandler timeZoneNodeHandler;
     private final GoogleCalendarNodeHandler googleCalendarNodeHandler;
     private final HttpRequestNodeHandler httpRequestNodeHandler;
-
     @Bean
     public List<NodeHandler> nodeHandlers() {
         return List.of(
