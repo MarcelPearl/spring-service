@@ -21,6 +21,14 @@ public class NodeHandlerConfig {
     private final TimeZoneNodeHandler timeZoneNodeHandler;
     private final GoogleCalendarNodeHandler googleCalendarNodeHandler;
     private final HttpRequestNodeHandler httpRequestNodeHandler;
+
+    private final GmailSendNodeHandler gmailSendNodeHandler;
+    private final GmailSearchNodeHandler gmailSearchNodeHandler;
+    private final GmailMarkReadNodeHandler gmailMarkReadNodeHandler;
+    private final GmailCreateDraftNodeHandler gmailCreateDraftNodeHandler;
+    private final GmailAddLabelNodeHandler gmailAddLabelNodeHandler;
+    private final GmailReplyNodeHandler gmailReplyNodeHandler;
+
     @Bean
     public List<NodeHandler> nodeHandlers() {
         return List.of(
@@ -33,7 +41,13 @@ public class NodeHandlerConfig {
                 calculatorNodeHandler,
                 timeZoneNodeHandler,
                 googleCalendarNodeHandler,
-                httpRequestNodeHandler
+                httpRequestNodeHandler,
+                gmailSendNodeHandler,
+                gmailSearchNodeHandler,
+                gmailAddLabelNodeHandler,
+                gmailReplyNodeHandler,
+                gmailCreateDraftNodeHandler,
+                gmailMarkReadNodeHandler
         );
     }
 }
