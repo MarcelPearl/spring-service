@@ -401,9 +401,9 @@ public class DistributedWorkflowCoordinator {
 
             executionService.completeExecution(execution, finalOutput);
 
-            contextService.clearExecution(executionId);
 
-            log.info("Workflow execution successfully completed and cleaned up: {}", executionId);
+
+            log.info("Workflow execution successfully completed : {}", executionId);
 
         } catch (Exception e) {
             log.error("Failed to complete workflow execution: {}", executionId, e);
