@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +38,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/workflows")
 @Validated
 @RequiredArgsConstructor
+@Slf4j
 public class WorkflowController {
 
     private final WorkflowService workflowService;
@@ -115,32 +118,58 @@ public class WorkflowController {
                 payload = new HashMap<>();
             }
 
+            // Log the incoming request for debugging
+            log.info("🚀 Starting workflow execution: {} with payload keys: {}",
+                    workflowId, payload.keySet());
+
+            // Add Google token from header
             String googleToken = request.getHeader("X-Google-Access-Token");
             if (googleToken != null && !googleToken.isBlank()) {
                 payload.put("googleAccessToken", googleToken);
+                log.info("✅ Added Google access token to payload");
+            } else {
+                log.warn("⚠️ No Google access token found in headers");
             }
 
+            // Add user info from JWT
             String authHeader = request.getHeader("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String jwt = authHeader.substring(7);
-                String userEmail = jwtService.extractEmail(jwt);
-                payload.put("user_email", userEmail);
+                try {
+                    String userEmail = jwtService.extractEmail(jwt);
+                    payload.put("user_email", userEmail);
+                    log.info("✅ Added user email to payload: {}", userEmail);
+                } catch (Exception e) {
+                    log.warn("⚠️ Failed to extract user email from JWT: {}", e.getMessage());
+                }
             }
+
+            // Add system variables
+            payload.put("execution_started_at", Instant.now().toString());
+            payload.put("workflow_id", workflowId.toString());
+
+            // Debug log final payload (excluding sensitive data)
+            Map<String, Object> logPayload = new HashMap<>(payload);
+            logPayload.remove("googleAccessToken"); // Don't log sensitive tokens
+            log.info("📦 Final execution payload: {}", logPayload);
 
             UUID executionId = workflowCoordinator.startWorkflowExecution(workflowId, payload);
 
             return ResponseEntity.ok(Map.of(
-                    "message", "Workflow execution started",
+                    "message", "Workflow execution started successfully",
                     "workflowId", workflowId,
                     "executionId", executionId,
-                    "status", "INITIATED"
+                    "status", "INITIATED",
+                    "timestamp", Instant.now().toString()
             ));
 
         } catch (Exception e) {
+            log.error("❌ Failed to start workflow execution: {}", workflowId, e);
             return ResponseEntity.badRequest().body(Map.of(
                     "error", e.getMessage(),
                     "workflowId", workflowId,
-                    "status", "FAILED"
+                    "status", "FAILED",
+                    "timestamp", Instant.now().toString()
             ));
         }
     }

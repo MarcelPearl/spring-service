@@ -1,6 +1,7 @@
 package com.marcella.backend.nodeHandlers;
 
 import com.marcella.backend.services.WorkflowEventProducer;
+import com.marcella.backend.utils.TemplateUtils;
 import com.marcella.backend.workflow.NodeCompletionMessage;
 import com.marcella.backend.workflow.NodeExecutionMessage;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +32,38 @@ public class DelayNodeHandler implements NodeHandler {
             Map<String, Object> nodeData = message.getNodeData();
             Map<String, Object> context = message.getContext();
 
-            Integer duration = (Integer) nodeData.getOrDefault("duration", 1000);
+            // Support template substitution for duration
+            String rawDuration = String.valueOf(nodeData.getOrDefault("duration", "1000"));
+            String processedDuration = TemplateUtils.substitute(rawDuration, context);
+
+            Integer duration;
+            try {
+                duration = Integer.valueOf(processedDuration);
+            } catch (NumberFormatException e) {
+                log.warn("Invalid duration format '{}', using default 1000ms", processedDuration);
+                duration = 1000;
+            }
+
+            // Validate duration
+            if (duration < 0) {
+                log.warn("Negative duration {} not allowed, using 0", duration);
+                duration = 0;
+            } else if (duration > 300000) { // Max 5 minutes
+                log.warn("Duration {} exceeds maximum 300000ms, capping at 300000", duration);
+                duration = 300000;
+            }
+
             log.info("Delaying for {} milliseconds", duration);
+
+            // Support custom delay message
+            String delayMessage = nodeData.containsKey("message")
+                    ? TemplateUtils.substitute((String) nodeData.get("message"), context)
+                    : "Delay completed";
+
+            // Support delay reason
+            String delayReason = nodeData.containsKey("reason")
+                    ? TemplateUtils.substitute((String) nodeData.get("reason"), context)
+                    : "Workflow delay";
 
             Thread.sleep(duration);
 
@@ -43,20 +74,48 @@ public class DelayNodeHandler implements NodeHandler {
 
             output.put("delay_completed", true);
             output.put("duration_ms", duration);
+            output.put("delay_message", delayMessage);
+            output.put("delay_reason", delayReason);
             output.put("completed_at", Instant.now().toString());
             output.put("node_type", "delay");
-            output.put("node_executed_at", Instant.now().toString());
+            output.put("executed_at", Instant.now().toString());
 
             long processingTime = System.currentTimeMillis() - startTime;
             publishCompletionEvent(message, output, "COMPLETED", processingTime);
 
+            log.info("Delay node completed successfully: {} with duration {}ms", message.getNodeId(), duration);
             return output;
 
         } catch (InterruptedException e) {
             long processingTime = System.currentTimeMillis() - startTime;
-            log.error("Delay node failed: {}", message.getNodeId(), e);
-            publishCompletionEvent(message, Map.of("error", e.getMessage()), "FAILED", processingTime);
+            log.error("Delay node interrupted: {}", message.getNodeId(), e);
+
+            Map<String, Object> errorOutput = new HashMap<>();
+            if (message.getContext() != null) {
+                errorOutput.putAll(message.getContext());
+            }
+            errorOutput.put("error", e.getMessage());
+            errorOutput.put("delay_completed", false);
+            errorOutput.put("failed_at", Instant.now().toString());
+            errorOutput.put("node_type", "delay");
+
+            publishCompletionEvent(message, errorOutput, "FAILED", processingTime);
             throw e;
+        } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
+            log.error("Delay node failed: {}", message.getNodeId(), e);
+
+            Map<String, Object> errorOutput = new HashMap<>();
+            if (message.getContext() != null) {
+                errorOutput.putAll(message.getContext());
+            }
+            errorOutput.put("error", e.getMessage());
+            errorOutput.put("delay_completed", false);
+            errorOutput.put("failed_at", Instant.now().toString());
+            errorOutput.put("node_type", "delay");
+
+            publishCompletionEvent(message, errorOutput, "FAILED", processingTime);
+            throw new RuntimeException("Delay node failed: " + e.getMessage(), e);
         }
     }
 

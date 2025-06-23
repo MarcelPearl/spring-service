@@ -38,7 +38,8 @@ public class WorkflowEventProducer {
             "calculator",
             "currentTime",
             "condition",
-            "googleCalender"
+            "googleCalendar",
+            "httpRequest"
     );
 
     public void publishNodeExecution(NodeExecutionMessage message) {
