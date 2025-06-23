@@ -39,7 +39,13 @@ public class WorkflowEventProducer {
             "currentTime",
             "condition",
             "googleCalendar",
-            "httpRequest"
+            "httpRequest",
+            "gmailSend",
+            "gmailSearch",
+            "gmailMarkRead",
+            "gmailAddLabel",
+            "gmailCreateDraft",
+            "gmailReply"
     );
 
     public void publishNodeExecution(NodeExecutionMessage message) {
