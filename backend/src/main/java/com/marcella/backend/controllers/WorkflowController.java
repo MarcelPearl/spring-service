@@ -4,10 +4,7 @@ import com.marcella.backend.entities.Execution;
 import com.marcella.backend.entities.Users;
 import com.marcella.backend.repositories.ExecutionRepository;
 import com.marcella.backend.responses.PageResponse;
-import com.marcella.backend.services.DistributedWorkflowCoordinator;
-import com.marcella.backend.services.JwtService;
-import com.marcella.backend.services.ReturnHandlerService;
-import com.marcella.backend.services.WorkflowService;
+import com.marcella.backend.services.*;
 import com.marcella.backend.workflow.CreateWorkflowRequest;
 import com.marcella.backend.workflow.WorkflowDto;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +39,7 @@ public class WorkflowController {
     private final JwtService jwtService;
     private final ExecutionRepository executionRepository;
     private final ReturnHandlerService returnHandler;
-
+    private final ExecutionContextService executionContextService;
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PageResponse<WorkflowDto>> getWorkflows(
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -254,6 +251,8 @@ public class WorkflowController {
                     log.info("✅ Execution completed successfully: {}", executionId);
                     Map<String, Object> result = returnHandler.createReturnPayload(executionId, "COMPLETED");
                     returnHandler.clearReturnVariables(executionId);
+                    executionContextService.clearExecution(executionId);
+                    log.info("cleared Execution context: {}", executionId);
                     return ResponseEntity.ok(result);
 
                 } else if ("FAILED".equals(status)) {

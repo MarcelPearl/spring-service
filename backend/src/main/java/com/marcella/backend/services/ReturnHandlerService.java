@@ -46,46 +46,74 @@ public class ReturnHandlerService {
         List<String> returnVariables = variables.stream()
                 .map(Object::toString)
                 .toList();
+        log.debug("📋 Retrieved {} return variables for execution: {}", returnVariables.size(), executionId);
         return returnVariables;
     }
 
     public Map<String, Object> extractReturnVariables(UUID executionId) {
         List<String> requestedVariables = getReturnVariables(executionId);
 
+        log.info("🔍 Extracting return variables for execution: {}", executionId);
+        log.info("🎯 Requested variables: {}", requestedVariables);
+
+        if (requestedVariables.isEmpty()) {
+            log.warn("⚠️ No return variables requested for execution: {}", executionId);
+            return new HashMap<>();
+        }
 
         ExecutionContext context = contextService.getContext(executionId);
         if (context == null) {
-            log.warn("No execution context found for: {}", executionId);
+            log.error("❌ No execution context found for: {}", executionId);
             return new HashMap<>();
         }
 
         Map<String, Object> allVariables = new HashMap<>();
 
+        // Add global variables
         if (context.getGlobalVariables() != null) {
             allVariables.putAll(context.getGlobalVariables());
+            log.debug("📦 Added {} global variables", context.getGlobalVariables().size());
         }
 
+        // Add all node outputs (flattened)
         if (context.getNodeOutputs() != null) {
+            int nodeOutputCount = 0;
             for (Map.Entry<String, Map<String, Object>> nodeEntry : context.getNodeOutputs().entrySet()) {
                 if (nodeEntry.getValue() != null) {
                     allVariables.putAll(nodeEntry.getValue());
+                    nodeOutputCount += nodeEntry.getValue().size();
+                    log.debug("📦 Added {} variables from node: {}", nodeEntry.getValue().size(), nodeEntry.getKey());
                 }
             }
+            log.debug("📦 Total variables from {} nodes: {}", context.getNodeOutputs().size(), nodeOutputCount);
         }
 
+        log.info("📊 Total available variables: {}", allVariables.size());
+        log.debug("🔑 Available variable keys: {}", allVariables.keySet());
+
         Map<String, Object> returnVariables = new HashMap<>();
+        List<String> foundVariables = new ArrayList<>();
+        List<String> missingVariables = new ArrayList<>();
 
         for (String varName : requestedVariables) {
             if (allVariables.containsKey(varName)) {
-                returnVariables.put(varName, allVariables.get(varName));
-                log.debug("Added return variable: {} = {}", varName, allVariables.get(varName));
+                Object value = allVariables.get(varName);
+                returnVariables.put(varName, value);
+                foundVariables.add(varName);
+                log.debug("✅ Found return variable: {} = {}", varName, value);
             } else {
-                log.warn("Requested return variable '{}' not found in execution context", varName);
                 returnVariables.put(varName, null);
+                missingVariables.add(varName);
+                log.warn("❌ Requested return variable '{}' not found in execution context", varName);
             }
         }
 
-        log.info("Extracted {} return variables for execution: {}", returnVariables.size(), executionId);
+        log.info("📤 Extracted {} return variables for execution: {}", returnVariables.size(), executionId);
+        log.info("✅ Found variables: {}", foundVariables);
+        if (!missingVariables.isEmpty()) {
+            log.warn("❌ Missing variables: {}", missingVariables);
+        }
+
         return returnVariables;
     }
 
