@@ -136,7 +136,6 @@ public class WorkflowController {
             log.info("🚀 Starting workflow execution: {} with payload keys: {}, return variables: {}, wait: {}",
                     workflowId, payload.keySet(), returnVariables, waitForCompletion);
 
-            // Add Google token from header
             String googleToken = request.getHeader("X-Google-Access-Token");
             if (googleToken != null && !googleToken.isBlank()) {
                 payload.put("googleAccessToken", googleToken);
@@ -145,7 +144,6 @@ public class WorkflowController {
                 log.warn("⚠️ No Google access token found in headers");
             }
 
-            // Add user info from JWT
             String authHeader = request.getHeader("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String jwt = authHeader.substring(7);
@@ -158,11 +156,9 @@ public class WorkflowController {
                 }
             }
 
-            // Add system variables
             payload.put("execution_started_at", Instant.now().toString());
             payload.put("workflow_id", workflowId.toString());
 
-            // Debug log final payload (excluding sensitive data)
             Map<String, Object> logPayload = new HashMap<>(payload);
             logPayload.remove("googleAccessToken");
             log.info("📦 Final execution payload: {}", logPayload);

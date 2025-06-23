@@ -38,21 +38,17 @@ public class GmailAddLabelNodeHandler implements NodeHandler {
             Map<String, Object> context = message.getContext();
             Map<String, Object> data = message.getNodeData();
 
-            // Check for Google access token
             String googleToken = (String) context.get("googleAccessToken");
             if (googleToken == null || googleToken.isBlank()) {
                 throw new IllegalStateException("Missing Google access token for Gmail operation");
             }
 
-            // Process template substitutions
             String messageIdsStr = TemplateUtils.substitute((String) data.getOrDefault("messageIds", ""), context);
             String labelsToAddStr = TemplateUtils.substitute((String) data.getOrDefault("labelsToAdd", ""), context);
             String labelsToRemoveStr = TemplateUtils.substitute((String) data.getOrDefault("labelsToRemove", ""), context);
 
-            // Parse message IDs
             List<String> messageIds = parseCommaSeparatedString(messageIdsStr);
 
-            // If no specific message IDs provided, try to get from previous node output
             if (messageIds.isEmpty()) {
                 Object gmailMessages = context.get("gmail_messages");
                 if (gmailMessages instanceof List) {
@@ -73,7 +69,6 @@ public class GmailAddLabelNodeHandler implements NodeHandler {
                 throw new IllegalArgumentException("No message IDs provided. Either specify messageIds or connect to a Gmail Search node.");
             }
 
-            // Parse labels to add and remove
             List<String> labelsToAdd = parseCommaSeparatedString(labelsToAddStr);
             List<String> labelsToRemove = parseCommaSeparatedString(labelsToRemoveStr);
 
@@ -84,13 +79,10 @@ public class GmailAddLabelNodeHandler implements NodeHandler {
             log.info("Modifying labels for {} messages. Adding: {}, Removing: {}",
                     messageIds.size(), labelsToAdd, labelsToRemove);
 
-            // Create Gmail service
             Gmail service = GmailConfig.getGmailService(googleToken);
 
-            // Get available labels to validate and convert names to IDs
             Map<String, String> labelNameToId = getLabelNameToIdMap(service);
 
-            // Convert label names to IDs
             List<String> labelIdsToAdd = new ArrayList<>();
             List<String> labelIdsToRemove = new ArrayList<>();
 
@@ -112,7 +104,6 @@ public class GmailAddLabelNodeHandler implements NodeHandler {
                 }
             }
 
-            // Modify messages
             List<String> successfullyModified = new ArrayList<>();
             List<String> failedToModify = new ArrayList<>();
 
@@ -141,7 +132,6 @@ public class GmailAddLabelNodeHandler implements NodeHandler {
                 }
             }
 
-            // Build output
             if (context != null) output.putAll(context);
             output.put("gmail_messages_modified", successfullyModified.size());
             output.put("gmail_successfully_modified", successfullyModified);

@@ -73,7 +73,6 @@ public class GmailSearchNodeHandler implements NodeHandler {
                         msgData.put("historyId", fullMessage.getHistoryId());
                         msgData.put("internalDate", fullMessage.getInternalDate());
 
-                        // Extract headers
                         if (fullMessage.getPayload() != null && fullMessage.getPayload().getHeaders() != null) {
                             Map<String, String> headers = new HashMap<>();
                             fullMessage.getPayload().getHeaders().forEach(header ->
