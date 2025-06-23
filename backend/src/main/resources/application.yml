@@ -28,7 +28,7 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: marcellapearl0627@gmail.com
-    password: qapsgyyokufnfhxz
+    password: iojqyfqewabuvtnd
 
   # Redis configuration for shared infrastructure
   data:
