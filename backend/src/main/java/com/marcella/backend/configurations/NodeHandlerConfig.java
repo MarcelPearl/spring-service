@@ -20,6 +20,8 @@ public class NodeHandlerConfig {
     private final CalculatorNodeHandler calculatorNodeHandler;
     private final TimeZoneNodeHandler timeZoneNodeHandler;
     private final GoogleCalendarNodeHandler googleCalendarNodeHandler;
+    private final HttpRequestNodeHandler httpRequestNodeHandler;
+
     @Bean
     public List<NodeHandler> nodeHandlers() {
         return List.of(
@@ -31,7 +33,8 @@ public class NodeHandlerConfig {
                 filterNodeHandler,
                 calculatorNodeHandler,
                 timeZoneNodeHandler,
-                googleCalendarNodeHandler
+                googleCalendarNodeHandler,
+                httpRequestNodeHandler
         );
     }
 }
