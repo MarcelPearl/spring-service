@@ -69,13 +69,11 @@ public class ReturnHandlerService {
 
         Map<String, Object> allVariables = new HashMap<>();
 
-        // Add global variables
         if (context.getGlobalVariables() != null) {
             allVariables.putAll(context.getGlobalVariables());
             log.debug("📦 Added {} global variables", context.getGlobalVariables().size());
         }
 
-        // Add all node outputs (flattened)
         if (context.getNodeOutputs() != null) {
             int nodeOutputCount = 0;
             for (Map.Entry<String, Map<String, Object>> nodeEntry : context.getNodeOutputs().entrySet()) {
@@ -115,11 +113,6 @@ public class ReturnHandlerService {
         }
 
         return returnVariables;
-    }
-
-    public boolean isReturnVariable(UUID executionId, String variableName) {
-        List<String> requestedVariables = getReturnVariables(executionId);
-        return requestedVariables.contains(variableName);
     }
 
     public void clearReturnVariables(UUID executionId) {

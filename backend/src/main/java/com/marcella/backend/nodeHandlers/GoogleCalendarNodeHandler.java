@@ -42,17 +42,14 @@ public class GoogleCalendarNodeHandler implements NodeHandler {
             Map<String, Object> context = message.getContext();
             Map<String, Object> data = message.getNodeData();
 
-            // Access token check
             String googleToken = (String) context.get("googleAccessToken");
             if (googleToken == null || googleToken.isBlank()) {
                 throw new IllegalStateException("Missing Google access token");
             }
 
-            // Logging
             String userEmail = context.getOrDefault("user_email", "unknown").toString();
             log.info("Google Calendar event being created by user: {}", userEmail);
 
-            // Raw input from frontend
             String rawSummary = (String) data.get("summary");
             String rawDescription = (String) data.get("description");
             String rawLocation = (String) data.get("location");
@@ -60,7 +57,6 @@ public class GoogleCalendarNodeHandler implements NodeHandler {
             String rawEndTime = (String) data.get("endTime");
             String rawCalendarId = (String) data.getOrDefault("calendarId", "primary");
 
-            // Template substitution
             String summary = TemplateUtils.substitute(rawSummary, context);
             String description = rawDescription != null ? TemplateUtils.substitute(rawDescription, context) : null;
             String location = rawLocation != null ? TemplateUtils.substitute(rawLocation, context) : null;
@@ -68,18 +64,15 @@ public class GoogleCalendarNodeHandler implements NodeHandler {
             String substitutedEndTime = TemplateUtils.substitute(rawEndTime, context);
             String calendarId = TemplateUtils.substitute(rawCalendarId, context);
 
-            // Convert user input to ISO-8601 UTC
             String isoStartTime = convertToISO8601UTC(substitutedStartTime);
             String isoEndTime = convertToISO8601UTC(substitutedEndTime);
 
-            // Validation
             if (summary == null || summary.isBlank()) throw new IllegalArgumentException("Event summary is required");
             if (isoStartTime == null || isoStartTime.isBlank()) throw new IllegalArgumentException("Start time is required");
             if (isoEndTime == null || isoEndTime.isBlank()) throw new IllegalArgumentException("End time is required");
 
             log.info("Creating calendar event: {} from {} to {} in calendar: {}", summary, isoStartTime, isoEndTime, calendarId);
 
-            // Build Google Calendar event
             Calendar service = GoogleCalendarConfig.getCalendarService(googleToken);
 
             Event event = new Event()
@@ -90,19 +83,16 @@ public class GoogleCalendarNodeHandler implements NodeHandler {
             if (description != null && !description.isBlank()) event.setDescription(description);
             if (location != null && !location.isBlank()) event.setLocation(location);
 
-            // Handle attendees (optional)
             Object attendeesObj = data.get("attendees");
             if (attendeesObj != null) {
                 String attendeesStr = TemplateUtils.substitute(String.valueOf(attendeesObj), context);
                 if (!attendeesStr.isBlank()) {
                     log.info("Event attendees: {}", attendeesStr);
-                    // Can extend this if needed
                 }
             }
 
             Event createdEvent = service.events().insert(calendarId, event).execute();
 
-            // Output
             if (context != null) output.putAll(context);
             output.put("calendar_event_summary", summary);
             output.put("calendar_event_id", createdEvent.getId());
@@ -139,14 +129,13 @@ public class GoogleCalendarNodeHandler implements NodeHandler {
     }
 
     private String convertToISO8601UTC(String input) throws Exception {
-        // Example: "23 June 2025, 2:30 PM"
         SimpleDateFormat inputFormat = new SimpleDateFormat("dd MMMM yyyy, h:mm a", Locale.ENGLISH);
-        inputFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata")); // input assumed to be IST
+        inputFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
 
         Date date = inputFormat.parse(input);
 
         SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        isoFormat.setTimeZone(TimeZone.getTimeZone("UTC")); // Output as UTC
+        isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         return isoFormat.format(date);
     }
 

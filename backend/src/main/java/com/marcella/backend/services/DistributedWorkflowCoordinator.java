@@ -64,35 +64,6 @@ public class DistributedWorkflowCoordinator {
                 executionId, context.getGlobalVariables().size());
     }
 
-
-    public void startWorkflowExecution(UUID workflowId) {
-        Workflows workflow = workflowRepository.findById(workflowId)
-                .orElseThrow(() -> new RuntimeException("Workflow not found"));
-
-        Execution execution = executionService.startExecution(workflow);
-        UUID executionId = execution.getId();
-
-        try {
-            WorkflowDefinition workflowDef = workflowDefinitionParser.parseWorkflowDefinition(workflow);
-
-            contextService.initializeExecution(executionId, workflowDef);
-
-            DependencyGraph dependencyGraph = kahnService.buildDependencyGraph(workflowDef);
-            List<String> readyNodes = kahnService.getInitialReadyNodes(dependencyGraph);
-
-            contextService.addReadyNodes(executionId, readyNodes);
-
-            routeNodesToServices(executionId, readyNodes, workflowDef);
-
-            log.info("Workflow execution started: {} with {} initial nodes",
-                    executionId, readyNodes.size());
-
-        } catch (Exception e) {
-            log.error("Failed to start workflow execution", e);
-            executionService.failExecution(execution, e.getMessage());
-        }
-    }
-
     public UUID startWorkflowExecution(UUID workflowId, Map<String, Object> payload,List<String> returnVariables) {
         log.info("Starting workflow execution: {} with payload: {} and return variables: {}",
                 workflowId, payload != null ? "provided" : "none", returnVariables);
@@ -106,7 +77,6 @@ public class DistributedWorkflowCoordinator {
         try {
             WorkflowDefinition workflowDef = workflowDefinitionParser.parseWorkflowDefinition(workflow);
 
-            // Store return variables if provided
             if (returnVariables != null && !returnVariables.isEmpty()) {
                 returnHandler.storeReturnVariables(executionId, returnVariables);
                 log.info("📋 Stored {} return variables for execution: {}", returnVariables.size(), executionId);
@@ -136,7 +106,6 @@ public class DistributedWorkflowCoordinator {
             log.error("Failed to start workflow execution: {}", workflowId, e);
             executionService.failExecution(execution, e.getMessage());
 
-            // Cleanup return variables on failure
             if (returnVariables != null && !returnVariables.isEmpty()) {
                 returnHandler.clearReturnVariables(executionId);
             }
@@ -334,7 +303,6 @@ public class DistributedWorkflowCoordinator {
             if (completionMessage.getOutput() != null && !completionMessage.getOutput().isEmpty()) {
                 contextService.updateNodeOutput(executionId, completedNodeId, completionMessage.getOutput());
 
-                // Track return variables if they exist in the output
                 trackReturnVariablesFromOutput(executionId, completionMessage.getOutput());
 
                 log.info("Updated context with output from node: {}", completedNodeId);
@@ -370,7 +338,6 @@ public class DistributedWorkflowCoordinator {
             if (execution != null) {
                 executionService.failExecution(execution, "Node completion processing failed: " + e.getMessage());
 
-                // Cleanup return variables on failure
                 returnHandler.clearReturnVariables(executionId);
             }
         }
@@ -385,16 +352,13 @@ public class DistributedWorkflowCoordinator {
 
             ExecutionContext context = contextService.getContext(executionId);
 
-            // Create final output with return variables if specified
             Map<String, Object> finalOutput;
             List<String> returnVariables = returnHandler.getReturnVariables(executionId);
 
             if (!returnVariables.isEmpty()) {
-                // Only include requested return variables
                 finalOutput = returnHandler.extractReturnVariables(executionId);
                 log.info("📤 Workflow completed with {} return variables", finalOutput.size());
             } else {
-                // Return all variables if no specific return variables requested
                 finalOutput = null;
                 log.info("📤 Workflow completed with all {} variables",0);
             }
@@ -423,10 +387,9 @@ public class DistributedWorkflowCoordinator {
         List<String> returnVariables = returnHandler.getReturnVariables(executionId);
         log.info("return varibale {}",returnVariables);
         if (returnVariables.isEmpty()) {
-            return; // No return variables requested
+            return;
         }
 
-        // Check if any of the output variables are requested for return
         for (String returnVar : returnVariables) {
                 log.debug("🎯 Tracked return variable: {} = {}", returnVar, output.get(returnVar));
         }

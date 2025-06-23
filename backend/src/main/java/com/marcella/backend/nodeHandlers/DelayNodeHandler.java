@@ -32,7 +32,6 @@ public class DelayNodeHandler implements NodeHandler {
             Map<String, Object> nodeData = message.getNodeData();
             Map<String, Object> context = message.getContext();
 
-            // Support template substitution for duration
             String rawDuration = String.valueOf(nodeData.getOrDefault("duration", "1000"));
             String processedDuration = TemplateUtils.substitute(rawDuration, context);
 
@@ -44,23 +43,20 @@ public class DelayNodeHandler implements NodeHandler {
                 duration = 1000;
             }
 
-            // Validate duration
             if (duration < 0) {
                 log.warn("Negative duration {} not allowed, using 0", duration);
                 duration = 0;
-            } else if (duration > 300000) { // Max 5 minutes
+            } else if (duration > 300000) {
                 log.warn("Duration {} exceeds maximum 300000ms, capping at 300000", duration);
                 duration = 300000;
             }
 
             log.info("Delaying for {} milliseconds", duration);
 
-            // Support custom delay message
             String delayMessage = nodeData.containsKey("message")
                     ? TemplateUtils.substitute((String) nodeData.get("message"), context)
                     : "Delay completed";
 
-            // Support delay reason
             String delayReason = nodeData.containsKey("reason")
                     ? TemplateUtils.substitute((String) nodeData.get("reason"), context)
                     : "Workflow delay";

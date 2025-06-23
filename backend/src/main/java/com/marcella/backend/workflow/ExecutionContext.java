@@ -40,11 +40,4 @@ public class ExecutionContext {
         }
         return nodeOutputs;
     }
-
-    public List<String> getRequestedReturnVariables() {
-        if (requestedReturnVariables == null) {
-            requestedReturnVariables = new ArrayList<>();
-        }
-        return requestedReturnVariables;
-    }
 }

@@ -131,7 +131,7 @@ public class HttpRequestNodeHandler implements NodeHandler {
                 String[] pairs = headersStr.split(",");
 
                 for (String pair : pairs) {
-                    String[] kv = pair.trim().split(":", 2); // Split only on first colon
+                    String[] kv = pair.trim().split(":", 2);
                     if (kv.length == 2) {
                         String key = TemplateUtils.substitute(kv[0].trim(), context);
                         String value = TemplateUtils.substitute(kv[1].trim(), context);

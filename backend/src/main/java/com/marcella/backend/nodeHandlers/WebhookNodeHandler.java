@@ -39,18 +39,14 @@ public class WebhookNodeHandler implements NodeHandler {
             Map<String, Object> nodeData = message.getNodeData();
             Map<String, Object> context = message.getContext();
 
-            // Process URL with template substitution
             String rawUrl = (String) nodeData.get("url");
             String url = rawUrl != null ? TemplateUtils.substitute(rawUrl, context) : null;
 
-            // Process method
             String rawMethod = (String) nodeData.getOrDefault("method", "POST");
             String method = TemplateUtils.substitute(rawMethod, context);
 
-            // Process headers if provided
             Map<String, String> headers = processHeaders(nodeData.get("headers"), context);
 
-            // Process payload/body
             Map<String, Object> payload = processPayload(nodeData.get("payload"), context);
 
             Map<String, Object> output = new HashMap<>();
@@ -58,7 +54,6 @@ public class WebhookNodeHandler implements NodeHandler {
                 output.putAll(context);
             }
 
-            // If URL is provided, make HTTP request
             if (url != null && !url.trim().isEmpty()) {
                 try {
                     ResponseEntity<String> response = makeHttpRequest(url, method, headers, payload);
@@ -70,13 +65,11 @@ public class WebhookNodeHandler implements NodeHandler {
                     output.put("webhook_response_body", response.getBody());
                     output.put("webhook_response_headers", response.getHeaders().toSingleValueMap());
 
-                    // Try to parse response as JSON if possible
                     if (response.getBody() != null && !response.getBody().trim().isEmpty()) {
                         try {
                             Object parsedResponse = objectMapper.readValue(response.getBody(), Object.class);
                             output.put("webhook_response_json", parsedResponse);
 
-                            // If response is a map, add parsed fields for easier access
                             if (parsedResponse instanceof Map) {
                                 Map<String, Object> responseMap = (Map<String, Object>) parsedResponse;
                                 responseMap.forEach((key, value) -> output.put("webhook_" + key, value));
@@ -93,12 +86,10 @@ public class WebhookNodeHandler implements NodeHandler {
                     output.put("webhook_error", e.getMessage());
                 }
             } else {
-                // Just trigger mode - no HTTP request
                 log.info("Webhook triggered without HTTP request");
                 output.put("webhook_triggered", true);
             }
 
-            // Add processed configuration to output
             output.put("webhook_url", url);
             output.put("webhook_method", method);
             output.put("webhook_headers", headers);
@@ -182,7 +173,6 @@ public class WebhookNodeHandler implements NodeHandler {
                 try {
                     return objectMapper.readValue(payloadStr, new TypeReference<Map<String, Object>>() {});
                 } catch (Exception e) {
-                    // If not valid JSON, treat as single value
                     processedPayload.put("data", payloadStr);
                     return processedPayload;
                 }

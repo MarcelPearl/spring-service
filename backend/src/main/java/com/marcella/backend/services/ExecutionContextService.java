@@ -32,28 +32,6 @@ public class ExecutionContextService {
     private static final String READY_NODES_KEY = "execution:ready:";
     private static final Duration DEFAULT_EXPIRATION = Duration.ofHours(24);
 
-    public void initializeExecution(UUID executionId, WorkflowDefinition workflow) {
-        String contextKey = CONTEXT_KEY + executionId;
-        String dependencyKey = DEPENDENCY_KEY + executionId;
-
-        ExecutionContext context = ExecutionContext.builder()
-                .executionId(executionId)
-                .workflowId(workflow.getId())
-                .status(ExecutionContext.ExecutionStatus.RUNNING)
-                .startTime(Instant.now())
-                .globalVariables(new HashMap<>())
-                .nodeOutputs(new HashMap<>())
-                .build();
-
-        redisTemplate.opsForValue().set(contextKey, context);
-
-        DependencyGraph dependencyGraph = kahnAlgoService.buildDependencyGraph(workflow);
-        redisTemplate.opsForValue().set(dependencyKey, dependencyGraph);
-
-        redisTemplate.expire(contextKey, Duration.ofHours(24));
-        redisTemplate.expire(dependencyKey, Duration.ofHours(24));
-    }
-
     public ExecutionContext getContext(UUID executionId) {
         return (ExecutionContext) redisTemplate.opsForValue().get(CONTEXT_KEY + executionId);
     }

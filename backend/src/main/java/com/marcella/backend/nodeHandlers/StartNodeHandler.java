@@ -24,7 +24,6 @@ public class StartNodeHandler implements NodeHandler {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // TTL for API keys in Redis (1 hour)
     private static final Duration API_KEY_TTL = Duration.ofHours(1);
 
     @Override

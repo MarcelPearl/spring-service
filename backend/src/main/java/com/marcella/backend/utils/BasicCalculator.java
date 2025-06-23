@@ -60,14 +60,13 @@ public class BasicCalculator {
             return result;
         }
 
-        // Handle + and - (lowest precedence)
         private double parseAdditionSubtraction() {
             double left = parseMultiplicationDivision();
 
             while (position < expression.length()) {
                 char operator = expression.charAt(position);
                 if (operator == '+' || operator == '-') {
-                    position++; // consume operator
+                    position++;
                     double right = parseMultiplicationDivision();
                     if (operator == '+') {
                         left = left + right;
@@ -87,7 +86,7 @@ public class BasicCalculator {
             while (position < expression.length()) {
                 char operator = expression.charAt(position);
                 if (operator == '*' || operator == '/') {
-                    position++; // consume operator
+                    position++;
                     double right = parseFactor();
                     if (operator == '*') {
                         left = left * right;
@@ -122,12 +121,12 @@ public class BasicCalculator {
             }
 
             if (currentChar == '(') {
-                position++; // consume '('
+                position++;
                 double result = parseAdditionSubtraction();
                 if (position >= expression.length() || expression.charAt(position) != ')') {
                     throw new IllegalArgumentException("Missing closing parenthesis");
                 }
-                position++; // consume ')'
+                position++;
                 return result;
             }
 

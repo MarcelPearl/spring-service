@@ -115,9 +115,7 @@ public class WorkflowController {
             List<String> returnVariables=Collections.emptyList();
 
             if (requestBody != null) {
-                // Check if it's the new format with returnVariables
                 if (requestBody.containsKey("payload") || requestBody.containsKey("returnVariables") || requestBody.containsKey("waitForCompletion")) {
-                    // New format
                     Map<String, Object> payloadMap = (Map<String, Object>) requestBody.get("payload");
                     if (payloadMap != null) {
                         payload.putAll(payloadMap);
@@ -128,7 +126,6 @@ public class WorkflowController {
                         timeoutMs = ((Number) requestBody.get("timeoutMs")).longValue();
                     }
                 } else {
-                    // Old format - direct payload
                     payload.putAll((Map<String, Object>) requestBody.get("payload"));
                 }
             }

@@ -26,13 +26,11 @@ public class TimeZoneNodeHandler implements NodeHandler{
         return "currentTime".equals(nodeType);
     }
 
-
     @Override
     public Map<String, Object> execute(NodeExecutionMessage message) {
         long start = System.currentTimeMillis();
         log.info("[CurrentTime] node={} executing", message.getNodeId());
         try {
-
             Map<String, Object> data = message.getNodeData();
             Map<String, Object> ctx = message.getContext();
 
@@ -41,6 +39,8 @@ public class TimeZoneNodeHandler implements NodeHandler{
                     : "UTC";
             ZonedDateTime now = ZonedDateTime.now(ZoneId.of(tz));
             String formatted = now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+            log.info("[CurrentTime] node={} → Resolved time: {} in timeZone: {}", message.getNodeId(), formatted, tz);
 
             Map<String, Object> out = new HashMap<>();
             if (ctx != null) out.putAll(ctx);
@@ -51,8 +51,7 @@ public class TimeZoneNodeHandler implements NodeHandler{
 
             publishCompletion(message, out, "COMPLETED", System.currentTimeMillis() - start);
             return out;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - start;
             log.error("Calculator node failed: {}", message.getNodeId(), e);
 
