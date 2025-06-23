@@ -6,9 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Data
 @Builder
@@ -19,7 +17,8 @@ public class ExecutionContext {
     private UUID workflowId;
     private UUID userId;
     private Map<String, Object> globalVariables;
-    private Map<String, Map<String, Object>> nodeOutputs; // nodeId -> output data
+    private Map<String, Map<String, Object>> nodeOutputs;
+    private List<String> requestedReturnVariables;
     private ExecutionStatus status;
     private Instant startTime;
     private Instant endTime;
@@ -40,5 +39,12 @@ public class ExecutionContext {
             nodeOutputs = new HashMap<>();
         }
         return nodeOutputs;
+    }
+
+    public List<String> getRequestedReturnVariables() {
+        if (requestedReturnVariables == null) {
+            requestedReturnVariables = new ArrayList<>();
+        }
+        return requestedReturnVariables;
     }
 }
