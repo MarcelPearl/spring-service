@@ -108,6 +108,7 @@ public class WorkflowController {
             @RequestBody(required = false) Map<String, Object> requestBody,
             HttpServletRequest request
     ) {
+        log.info("Run workflow request: {}", requestBody);
         try {
             Map<String, Object> payload = new HashMap<>();
             boolean waitForCompletion = false;
