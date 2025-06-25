@@ -1,6 +1,5 @@
 package com.marcella.backend.contact;
 
-import com.marcella.backend.repositories.UserRepository;
 import com.marcella.backend.services.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

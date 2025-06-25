@@ -49,7 +49,6 @@ public class StartNodeHandler implements NodeHandler {
                             output.putAll(parsed);
                             log.info("Parsed stringified context with {} keys", parsed.size());
 
-                            // Check for OpenAI API key in parsed context
                             checkAndStoreOpenAIKey(parsed, message.getExecutionId().toString());
                         }
                         catch (Exception parseEx) {
